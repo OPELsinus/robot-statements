@@ -50,13 +50,24 @@ post_handler = PostHandler(f'{orc_host}/log')
 post_handler.setFormatter(formatter)
 post_handler.setLevel(logging.INFO)
 logger.addHandler(post_handler)
-log_path = local_path.joinpath('.agent\\<REPLACE-PROJECT-NAME>\\logs.txt')
+log_path = local_path.joinpath('.agent\\robot-statements\\logs.txt')
 log_path.parent.mkdir(exist_ok=True, parents=True)
 file_handler = RotatingFileHandler(log_path.__str__(), maxBytes=1 * 1024 * 1024, backupCount=50, encoding="utf-8")
 file_handler.setFormatter(formatter)
 file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
 logger.setLevel(logging.DEBUG)
+
+config_path = local_path.joinpath('.agent\\robot-statements\\config.json')
+config_data = json_read(config_path)
+SEDLogin = config_data['SEDLogin']
+SEDPass = config_data['SEDPass']
+download_path = Path.home().joinpath('downloads')
+working_path = root_path.joinpath('working_path')
+working_path.mkdir(exist_ok=True, parents=True)
+save_xlsx_path = config_data['save_xlsx_path']
+chat_id = config_data['chat_id']
+
 
 if ctypes.windll.user32.GetKeyboardLayout(0) != 67699721:
     __err__ = 'Смените раскладку на ENG'

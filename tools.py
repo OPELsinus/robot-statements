@@ -1,5 +1,6 @@
 import ctypes
 import inspect
+import io
 import json
 import logging
 import os
@@ -82,8 +83,22 @@ def prevent_auto_lock():
 
 
 def send_message_to_tg(bot_token, chat_id, message):
-    bot = telegram.Bot(token=bot_token)
-    bot.send_message(chat_id=chat_id, text=message)
+    import requests
+
+    r = requests.post(f"https://api.telegram.org/bot{bot_token}/sendMessage", json={'chat_id': chat_id, 'text': message}, verify=False)
+
+def take_screenshot():
+    screenshot = pyautogui.screenshot()
+    scr_bytes = io.BytesIO()
+    screenshot.save(scr_bytes, format='PNG')
+    scr_bytes.seek(0)
+
+    return scr_bytes
+
+def send_screenshot_to_tg(bot_token, chat_id, screenshot_bytes):
+    import requests
+
+    response = requests.post(f"https://api.telegram.org/bot{bot_token}/sendPhoto", data={'chat_id': chat_id}, files={'photo': ('screenshot.png', screenshot_bytes)}, verify=False)
 
 
 def send_message_to_orc(url, chat_id, message, log=True):

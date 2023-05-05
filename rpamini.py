@@ -391,6 +391,14 @@ class Web:
             ActionChains(self.driver).double_click(self.element).perform() if double else self.element.click()
 
         @try_except_decorator
+        def wheel_click(self, delay=0, scroll=True):
+            sleep(delay)
+            if scroll:
+                self.scroll(skip_error=True, log=False)
+            self.driver.execute_script("window.open();", self.element.get_attribute("href"))
+            # ActionChains(self.driver).key_down(Keys.COMMAND).send_keys("t").key_up(Keys.COMMAND).perform()
+
+        @try_except_decorator
         def get_attr(self, attr='text', delay=0, scroll=False):
             sleep(delay)
             if scroll:
@@ -461,6 +469,7 @@ class Web:
         self.options.add_argument("--ignore-ssl-errors=yes")
         self.options.add_argument("--ignore-certificate-errors")
 
+
         # noinspection PyTypeChecker
         self.driver: WebDriver = None
 
@@ -468,6 +477,7 @@ class Web:
     def run(self):
         self.quit(skip_error=False, log=False)
         self.driver = webdriver.Chrome(service=Service(self.path.__str__()), options=self.options)
+        self.driver.set_page_load_timeout(3600)
 
     @try_except_decorator
     def quit(self):
@@ -494,6 +504,10 @@ class Web:
     @try_except_decorator
     def get(self, url):
         self.driver.get(url)
+
+    @try_except_decorator
+    def get_current_url(self):
+        return self.driver.current_url
 
     @try_except_decorator
     def find_elements(self, selector, timeout=None, event=None, by='xpath'):
