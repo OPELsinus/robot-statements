@@ -68,7 +68,7 @@ class Registry(Web):
 
 def search_by_date(yest):
     print('Started searching by date')
-    send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Начат фильтр по дате')
+    # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Начат фильтр по дате')
     web = Registry()
     web.run()
     web.auth()
@@ -334,7 +334,7 @@ def get_data_from_reestr(web):
         return df1
 
     except:
-        tools.send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА3')
+        send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА3')
 
 
 def fact_oplat_to_reestr(filename, yesterdays_reestr_date):
@@ -415,7 +415,7 @@ def get_first_statement(weekends):
 
 def odines(yesterdays_reestr_date):
 
-    send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начат 1С')
+    # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начат 1С')
     app = Odines()
 
     if True:
@@ -523,7 +523,7 @@ def odines(yesterdays_reestr_date):
 
 def design_number_fmt_and_date(df2, yest):
     print('Started designing number and date formats')
-    send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начато форматирование ячеек для чисел и дат')
+    # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начато форматирование ячеек для чисел и дат')
     if True:
         book = load_workbook(f'{working_path}\\Temp1111.xlsx')  # edit1
 
@@ -548,7 +548,7 @@ def design_number_fmt_and_date(df2, yest):
 
 def fill_empty_bins():
     print('Started filling empty bins')
-    send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начато заполнение пустых БИНов')
+    # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начато заполнение пустых БИНов')
     if True:
         time.sleep(0.2)
         book = load_workbook(f'{working_path}\\Temp1111.xlsx')
@@ -587,7 +587,7 @@ def fill_empty_bins():
 def make_analysis_and_calculations(yesterday):
     hold_session()
     print('Started making analysis and calculations')
-    send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начаты анализ и подсчёт файла')
+    # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начаты анализ и подсчёт файла')
     try:                                            # Temp2323
         book = load_workbook(f'{working_path}\\Temp2323.xlsx')
 
@@ -805,7 +805,7 @@ def make_analysis_and_calculations(yesterday):
         cell = f'K{ind1 + 1}:W{10001}'
         sheet.range(cell).clear_contents()
         sheet.range(cell).clear_formats()
-        send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Всё сверено. Лишние строки были удалены: длина {ind} - Реестры, {ind1} - Halyk')
+        # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Всё сверено. Лишние строки были удалены: длина {ind} - Реестры, {ind1} - Halyk')
         sheet.range(f'L1:O{ind1 + 1}').api.VerticalAlignment = VAlign.xlVAlignCenter
         sheet.range(f'L1:O{ind1 + 1}').api.HorizontalAlignment = HAlign.xlHAlignCenter
 
@@ -814,12 +814,15 @@ def make_analysis_and_calculations(yesterday):
         book.close()
         app.quit()
         app.kill()
+
         try:
             os.remove(f'{working_path}\\Temp4444.xlsx')
             os.remove(f'{working_path}\\Temp2323.xlsx')
             os.remove(f'{working_path}\\Temp1111.xlsx')
         except:
             ...
+
+        return [ind, ind1]
 
     except:
         send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА5')
@@ -834,16 +837,19 @@ if __name__ == '__main__':
     start_time_secs = time.time()
     timings = []
     # ['11.04.2023', '12.04.2023', '13.04.2023', '14.04.2023', '17.04.2023', '18.04.2023', '19.04.2023', '20.04.2023', '21.04.2023', '24.04.2023', '25.04.2023', '26.04.2023', '27.04.2023', '03.05.2023']:
-    for ind in range(1):
 
-        start_time_iter = datetime.datetime.now().strftime('%H:%M:%S')
-        calendar = pd.read_excel(f'{save_xlsx_path}\\Производственный календарь 2023.xlsx')
+    start_time_iter = datetime.datetime.now().strftime('%H:%M:%S')
+    calendar = pd.read_excel(f'{save_xlsx_path}\\Производственный календарь 2023.xlsx')
 
-        # yesterday1 = yesterday2
-        yesterday1 = datetime.date.today().strftime('%d.%m.%y')
-        yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
+    # yesterday1 = yesterday2
+    yesterday1 = datetime.date.today().strftime('%d.%m.%y')
+    yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
 
-        cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
+    cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
+    cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
+
+    if cur_day_type != 'Holiday':
+
         print('Started current date: ', yesterday2)
         weekends = []
 
@@ -895,19 +901,21 @@ if __name__ == '__main__':
 
         # 5 --------------------------------------------------------------------------
 
-        make_analysis_and_calculations(yesterday2)  # edit3 - ОБРАЗЕЦ2323
+        len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)  # edit3 - ОБРАЗЕЦ2323
+
+        send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены: длина {len_reestr} - Реестры, {len_halyk} - Halyk')
 
         # # FINISHED --------------------------------------------------------------------------
         end_time_iter = datetime.datetime.now().strftime('%H:%M:%S')
         print('Time started & ended of current iteration: ', start_time_iter, end_time_iter)
         timings.append([start_time_iter, end_time_iter])
 
-    end_time = datetime.datetime.now().strftime('%H:%M:%S')
-    end_time_secs = time.time()
-    print('Time of all iterations: ')
-    for i in timings:
-        print(i)
-    print('\nTime started & ended: ', start_time, end_time)
-    print('Total elapsed time: ', end_time_secs - start_time_secs)
+        end_time = datetime.datetime.now().strftime('%H:%M:%S')
+        end_time_secs = time.time()
+        print('Time of all iterations: ')
+        for i in timings:
+            print(i)
+        print('\nTime started & ended: ', start_time, end_time)
+        print('Total elapsed time: ', end_time_secs - start_time_secs)
 
-    send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz'], subject='Сверка выписок', body='Сверка выписок завершилась', username=smtp_author)
+        send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject='Сверка выписок', body='Сверка выписок завершилась', username=smtp_author)
