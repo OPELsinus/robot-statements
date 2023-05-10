@@ -12,10 +12,7 @@ import os
 import shutil
 # shutil.rmtree(rf'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ\Temp1111.xlsx')
 # os.remove(rf'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ\Temp1111.xlsx')
-print(Path.home().joinpath('downloads'))
-print(Path.home().joinpath('downloads').is_dir())
-
-# import openpyxl
+print(datetime.date.today().strftime('%d.%m.%Y')[-4:])
 #
 # book = openpyxl.load_workbook(r'C:\Users\Abdykarim.D\Desktop\аф29.xlsx')
 # sheet = book.active

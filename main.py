@@ -16,8 +16,8 @@ from openpyxl import load_workbook
 from core import Odines
 
 import tools
-from tools import hold_session, send_message_by_smtp, send_message_to_orc
-from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path
+from tools import hold_session, send_message_by_smtp, send_message_to_orc, update_credentials
+from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password
 from rpamini import Web
 
 
@@ -216,24 +216,26 @@ def documentolog(web, yesterday):
     df1 = pd.DataFrame()
 
     for index in range(100):
+        try:
+            row = web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').get_attr('text')
 
-        row = web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').get_attr('text')
+            if 'Факт' in row and 'оплат' in row and year in row:
 
-        if 'Факт' in row and 'оплат' in row and year in row:
+                try:
+                    web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').click()
+                    web.find_element('//*[contains(@id, "fileview")]').click()
 
-            try:
-                web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').click()
-                web.find_element('//*[contains(@id, "fileview")]').click()
+                    filename = web.find_element('//*[contains(@id, "fileview")]').get_attr('text').split()[0]
+                    tools.check_file_downloaded(download_path, filename)
 
-                filename = web.find_element('//*[contains(@id, "fileview")]').get_attr('text').split()[0]
-                tools.check_file_downloaded(download_path, filename)
+                    df1 = fact_oplat_to_reestr(filename, yesterd_reestr_date)
 
-                df1 = fact_oplat_to_reestr(filename, yesterd_reestr_date)
+                    break
 
-                break
-
-            except:
-                send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА2')
+                except:
+                    send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА2')
+        except:
+            break
 
     df2 = pd.concat([df2, df1])
 
@@ -338,9 +340,10 @@ def get_data_from_reestr(web):
 
 
 def fact_oplat_to_reestr(filename, yesterdays_reestr_date):
+    print('Started fact oplat to reestr')
     hold_session()
-    df = pd.read_excel(download_path + filename)
-
+    df = pd.read_excel(os.path.join(download_path, filename))
+    # print(os.path.join(download_path, filename))
     df['Дата'] = pd.to_datetime(df['Дата'], format='%d.%m.%Y')
     df['Дата'] = df['Дата'].dt.strftime('%d.%m.%y')
 
@@ -525,7 +528,7 @@ def design_number_fmt_and_date(df2, yest):
     print('Started designing number and date formats')
     # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начато форматирование ячеек для чисел и дат')
     if True:
-        book = load_workbook(f'{working_path}\\Temp1111.xlsx')  # edit1
+        book = load_workbook(f'{working_path}\\Temp1.xlsx')  # edit1
 
         book.active = book['Реестры']
         sheet = book.active
@@ -539,7 +542,7 @@ def design_number_fmt_and_date(df2, yest):
 
         sheet['D1'] = yest
 
-        book.save(f'{working_path}\\Temp1111.xlsx')  # edit1
+        book.save(f'{working_path}\\Temp1.xlsx')  # edit1
         book.close()
 
     # except:
@@ -551,7 +554,7 @@ def fill_empty_bins():
     # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начато заполнение пустых БИНов')
     if True:
         time.sleep(0.2)
-        book = load_workbook(f'{working_path}\\Temp1111.xlsx')
+        book = load_workbook(f'{working_path}\\Temp1.xlsx')
 
         sheet = book['БИНы и Компании']
 
@@ -575,7 +578,7 @@ def fill_empty_bins():
                 if company == sheet[f'A{i}'].value and sheet[f'B{i}'].value is None:
                     sheet[f'B{i}'].value = bins[ind]
 
-        book.save(f'{working_path}\\Temp2323.xlsx')
+        book.save(f'{working_path}\\Temp1.xlsx')
         book.close()
 
         time.sleep(0.3)
@@ -589,7 +592,7 @@ def make_analysis_and_calculations(yesterday):
     print('Started making analysis and calculations')
     # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начаты анализ и подсчёт файла')
     try:                                            # Temp2323
-        book = load_workbook(f'{working_path}\\Temp2323.xlsx')
+        book = load_workbook(f'{working_path}\\Temp1.xlsx')
 
         contragent_name_halyk = []
         payment_amount_halyk = []
@@ -757,7 +760,7 @@ def make_analysis_and_calculations(yesterday):
                 break
             sheet[f'H{ind}'].number_format = '_(* #,##0.00_);_(* (#,##0.00);_(* "-"??_);_(@_)'
 
-        book.save(f'{working_path}\\Temp4444.xlsx')
+        book.save(f'{working_path}\\Temp1.xlsx')
         book.close()
         time.sleep(1)
         try:
@@ -767,7 +770,7 @@ def make_analysis_and_calculations(yesterday):
         time.sleep(1)
 
         excel_app = xw.App(visible=False)
-        book = excel_app.books.open(f'{working_path}\\Temp4444.xlsx', corrupt_load=True)
+        book = excel_app.books.open(f'{working_path}\\Temp1.xlsx', corrupt_load=True)
 
         app = xw.apps.active
         app.calculate()
@@ -816,9 +819,9 @@ def make_analysis_and_calculations(yesterday):
         app.kill()
 
         try:
-            os.remove(f'{working_path}\\Temp4444.xlsx')
-            os.remove(f'{working_path}\\Temp2323.xlsx')
-            os.remove(f'{working_path}\\Temp1111.xlsx')
+            os.remove(f'{working_path}\\Temp1.xlsx')
+            # os.remove(f'{working_path}\\Temp2323.xlsx')
+            # os.remove(f'{working_path}\\Temp1111.xlsx')
         except:
             ...
 
@@ -839,11 +842,14 @@ if __name__ == '__main__':
     # ['11.04.2023', '12.04.2023', '13.04.2023', '14.04.2023', '17.04.2023', '18.04.2023', '19.04.2023', '20.04.2023', '21.04.2023', '24.04.2023', '25.04.2023', '26.04.2023', '27.04.2023', '03.05.2023']:
 
     start_time_iter = datetime.datetime.now().strftime('%H:%M:%S')
-    calendar = pd.read_excel(f'{save_xlsx_path}\\Производственный календарь 2023.xlsx')
 
+    update_credentials(save_xlsx_path, owa_username, owa_password)
     # yesterday1 = yesterday2
     yesterday1 = datetime.date.today().strftime('%d.%m.%y')
     yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
+    # yesterday1 = '05.05.23'
+    # yesterday2 = '05.05.2023'
+    calendar = pd.read_excel(f'{save_xlsx_path}\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
     cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
     cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
@@ -864,6 +870,7 @@ if __name__ == '__main__':
         yesterday = yesterday1[:6] + '20' + yesterday1[-2:]
         # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начата отработка за {yesterday2}, отрабатывается день {yesterday}')
         print(yesterday, yesterday1, yesterday2)
+
         web1 = search_by_date(yesterday)
 
         # # 1 --------------------------------------------------------------------------
@@ -886,7 +893,7 @@ if __name__ == '__main__':
             for c_idx, value in enumerate(row, 1):
                 sheet.cell(row=r_idx, column=c_idx, value=value)
 
-        book.save(f'{working_path}\\Temp1111.xlsx')  # edit1
+        book.save(f'{working_path}\\Temp1.xlsx')  # edit1
 
         # 3 --------------------------------------------------------------------------
         df1 = odines(yesterdays_reestr_date)  # correct with yesterdays_reestr_date
