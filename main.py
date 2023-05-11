@@ -1,4 +1,5 @@
 import csv
+import logging
 import os
 import re
 import time
@@ -17,9 +18,8 @@ from core import Odines
 
 import tools
 from tools import hold_session, send_message_by_smtp, send_message_to_orc, update_credentials
-from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password
+from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name
 from rpamini import Web
-
 
 cols = ['N', 'Согласован', 'Дата выписки', 'Дата планируемой оплаты', 'Заявка на оплату',
         'Вид операции', 'Организация', 'Контрагент', 'БИН / ИИН', 'Статья затрат', 'Код БДДС', 'Документ основание', 'Валюта документа', 'Сумма документа',
@@ -39,6 +39,7 @@ MONTHS = [
     'Ноябрь',
     'Декабрь'
 ]
+
 
 class Registry(Web):
 
@@ -67,7 +68,7 @@ class Registry(Web):
 
 
 def search_by_date(yest):
-    print('Started searching by date')
+    # print('Started searching by date')
     # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Начат фильтр по дате')
     web = Registry()
     web.run()
@@ -97,7 +98,7 @@ def search_by_date(yest):
         web.find_element('//*[@id="extended_search_container_folder"]/div/div[2]/div/div[1]/div/input').click()
 
     time.sleep(0.1)
-    print(yest)
+    # print(yest)
     web.find_element('//*[@id="extended_search_container_folder"]/div/div[2]/div/div[1]/div/ul/li[6]').click()
     time.sleep(0.2)
 
@@ -133,6 +134,10 @@ def search_by_date(yest):
 
 def documentolog(web, yesterday):
 
+    if web.find_element('//*[@id="node_meta_total_rows"]').get_attr('text') == '0':
+        web.quit()
+        return [None, None]
+
     order = web.find_element('//*[contains(@id, "grid_col_f")]/span/a[2]').get_attr('class')
 
     # Сортировка реестров по убыванию даты
@@ -158,8 +163,8 @@ def documentolog(web, yesterday):
             texts.append(cell.get_attr('text'))
         except:
             send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА1')
-
-    while end < len(texts):
+    print(links, len(links))
+    while end <= len(texts):
         rows.append(texts[start:end])
         start, end = start + 13, end + 13
 
@@ -176,7 +181,7 @@ def documentolog(web, yesterday):
     for ind, row in enumerate(rows):
         row_date = datetime.datetime.strptime(row[0], '%d.%m.%Y').date()
         if row_date < today:
-
+            logger.info(f'Checking')
             if len(yesterd_reestr_date) == 0:
                 yesterd_reestr_date = row[0]
 
@@ -187,25 +192,26 @@ def documentolog(web, yesterday):
                 web.load()
 
                 link.append(links[ind])
-
+                logger.info(f'Started reestr: {links[ind]}')
                 df1 = get_data_from_reestr(web)
+                # logger.info(f'Ended reestr: {links[ind]}')
                 df2 = pd.concat([df2, df1])
+                # logger.info(f'Concatenated')
                 end_time = datetime.datetime.now().strftime('%H:%M:%S')
                 times.append([start_time, end_time])
-                print(row, links[ind])
-    print(link)
-
+                # print(row, links[ind])
+    logger.info(f'Went forward')
     # ----------------------------------------------------------------------------------
     # Выполнение кода до страницы 11
     # ----------------------------------------------------------------------------------
 
     # Кнопка "Справочники"
     web.find_element('//*[@id="header_menu"]/li[6]/a').click()
-    time.sleep(1)
+    time.sleep(0.7)
 
     # Кнопка "Справочники -> Системные"
     web.find_element('//*[@id="header_menu"]/li[6]/div/ul/li[4]/a').click()
-    time.sleep(1)
+    time.sleep(0.7)
 
     # Кнопка "Справочники -> Системные -> Список файлов"
     web.find_element('//*[@id="header_menu"]/li[6]/div/ul/li[4]/div/ul/li[6]/a').click()
@@ -230,6 +236,8 @@ def documentolog(web, yesterday):
 
                     df1 = fact_oplat_to_reestr(filename, yesterd_reestr_date)
 
+                    os.remove(os.path.join(download_path, filename))
+
                     break
 
                 except:
@@ -239,16 +247,16 @@ def documentolog(web, yesterday):
 
     df2 = pd.concat([df2, df1])
 
-    for times1 in times:
-        print(times1)
-    print(yesterd_reestr_date)
+    # for times1 in times:
+    #     print(times1)
+    # print(yesterd_reestr_date)
 
     web.quit()
     return [df2, yesterd_reestr_date]
 
 
 def get_data_from_reestr(web):
-    print('Started reestr')
+    # print('Started reestr')
 
     reestr_title = web.find_element('//*[@id="reference-view"]/table/tbody/tr[3]/td[2]').get_attr('text')
     provider_name = []
@@ -258,15 +266,17 @@ def get_data_from_reestr(web):
     amount_to_pay = []
     payment_date = []
 
-    try:
+    if True:
         cells1 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[5]')
         cells2 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[4]')
         cells3 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[14]')
+        logger.info('Found 3 cells')
         hold_session()
         cells4 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[9]')
         cells5 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[8]')
         cells6 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[7]')
         hold_session()
+        logger.info('Found 6 cells')
 
         for cell in cells1[1:]:
             text = cell.get_attr('text').strip()
@@ -277,6 +287,7 @@ def get_data_from_reestr(web):
         for cell in cells3[1:]:
             text = cell.get_attr('text').strip()
             statement_in_dds.append(text) if len(text) != 0 else None
+        logger.info('Appended 3 cells')
         hold_session()
         for cell in cells4[1:]:
             text = cell.get_attr('text').strip()
@@ -287,6 +298,7 @@ def get_data_from_reestr(web):
         for cell in cells6[1:]:
             text = cell.get_attr('text').strip()
             payment_date.append(text) if len(text) != 0 else None
+        logger.info('Appended 6 cells')
 
         if 'го' in reestr_title.lower() and 'доп' not in reestr_title.lower():
             reestr_title = 'Реестр (ГО)'
@@ -330,17 +342,18 @@ def get_data_from_reestr(web):
         amount_to_pay = [s.replace(' ', '') for s in amount_to_pay]
         amount_to_pay = np.asarray(amount_to_pay).astype(float)
 
-        df1 = pd.DataFrame({'Поставщик': provider_name, 'БИН / ИИН получателя': provider_bin_iin, 'Реестр': reestr_title, 'Статья в ДДС': statement_in_dds, 'Валюта платежа': payment_currency,
+        df3 = pd.DataFrame({'Поставщик': provider_name, 'БИН / ИИН получателя': provider_bin_iin, 'Реестр': reestr_title, 'Статья в ДДС': statement_in_dds, 'Валюта платежа': payment_currency,
                             'Сумма к оплате': amount_to_pay, 'Сумма к оплате KZT': amount_to_pay, 'Курс': 1, 'Дата оплаты': payment_date, 'Skip': '', 'Проверка статьи': statement_check, 'Название статьи': ''})
         hold_session()
-        return df1
+        logger.info(f'DF Length: {len(df3)}')
+        return df3
 
-    except:
-        send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА3')
+    # except:
+    #     send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА3')
 
 
 def fact_oplat_to_reestr(filename, yesterdays_reestr_date):
-    print('Started fact oplat to reestr')
+    # print('Started fact oplat to reestr')
     hold_session()
     df = pd.read_excel(os.path.join(download_path, filename))
     # print(os.path.join(download_path, filename))
@@ -365,7 +378,7 @@ def fact_oplat_to_reestr(filename, yesterdays_reestr_date):
 
 def get_first_statement(weekends):
     hold_session()
-    print('Started getting first statement')
+    # print('Started getting first statement')
     df1 = pd.DataFrame()
 
     for ind, day in enumerate(weekends[::-1]):
@@ -392,7 +405,7 @@ def get_first_statement(weekends):
                             df1 = pd.concat([df1, df2])
 
     df1.dropna(how='all', inplace=True)
-    print(len(df1))
+    # print(len(df1))
     # df1.to_excel(r'C:\Users\Abdykarim.D\Desktop\lolus.xlsx')
 
     try:
@@ -417,7 +430,6 @@ def get_first_statement(weekends):
 
 
 def odines(yesterdays_reestr_date):
-
     # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начат 1С')
     app = Odines()
 
@@ -525,73 +537,67 @@ def odines(yesterdays_reestr_date):
 
 
 def design_number_fmt_and_date(df2, yest):
-    print('Started designing number and date formats')
+    logger.info('Started designing number and date formats')
+    # print('Started designing number and date formats')
     # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начато форматирование ячеек для чисел и дат')
-    if True:
-        book = load_workbook(f'{working_path}\\Temp1.xlsx')  # edit1
 
-        book.active = book['Реестры']
-        sheet = book.active
+    book = load_workbook(f'{working_path}\\Temp1.xlsx')  # edit1
 
-        rows = df2.to_numpy().tolist()
+    book.active = book['Реестры']
+    sheet = book.active
 
-        for r_idx, row in enumerate(rows, 19):
-            for c_idx, value in enumerate(row, 1):
-                sheet[f'B{r_idx}'].number_format = '0'
-                sheet.cell(row=r_idx, column=c_idx, value=str(value)).number_format = '0'
+    rows = df2.to_numpy().tolist()
 
-        sheet['D1'] = yest
+    for r_idx, row in enumerate(rows, 19):
+        for c_idx, value in enumerate(row, 1):
+            sheet[f'B{r_idx}'].number_format = '0'
+            sheet.cell(row=r_idx, column=c_idx, value=str(value)).number_format = '0'
 
-        book.save(f'{working_path}\\Temp1.xlsx')  # edit1
-        book.close()
+    sheet['D1'] = yest
 
-    # except:
-    #     print('Error ID 3')
+    book.save(f'{working_path}\\Temp1.xlsx')  # edit1
+    book.close()
 
 
 def fill_empty_bins():
-    print('Started filling empty bins')
+    # print('Started filling empty bins')
     # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начато заполнение пустых БИНов')
-    if True:
-        time.sleep(0.2)
-        book = load_workbook(f'{working_path}\\Temp1.xlsx')
+    book = load_workbook(f'{working_path}\\Temp1.xlsx')
 
-        sheet = book['БИНы и Компании']
+    sheet = book['БИНы и Компании']
 
-        bins = []
-        companies = []
+    bins = []
+    companies = []
 
-        for ind in range(2, sheet.max_row):
-            if sheet[f'A{ind}'].value is None and sheet[f'B{ind}'].value is None:
-                break
-            bins.append(sheet[f'A{ind}'].value)
-            companies.append(sheet[f'B{ind}'].value)
+    for ind in range(2, sheet.max_row):
+        if sheet[f'A{ind}'].value is None and sheet[f'B{ind}'].value is None:
+            break
+        bins.append(sheet[f'A{ind}'].value)
+        companies.append(sheet[f'B{ind}'].value)
 
-        sheet = book['Реестры']
-        for i in range(19, sheet.max_row):
-            if sheet[f'A{i}'].value is None and sheet[f'B{i}'].value is None:
-                break
+    sheet = book['Реестры']
+    for i in range(19, sheet.max_row):
+        if sheet[f'A{i}'].value is None and sheet[f'B{i}'].value is None:
+            break
 
-            for ind, company in enumerate(companies):
-                # if sheet[f'A{i}'].value == 'Научно-производственное Объединение Дортехника ТОО' == company:
-                #     print(company, sheet[f'B{i}'].value, bins[ind])
-                if company == sheet[f'A{i}'].value and sheet[f'B{i}'].value is None:
-                    sheet[f'B{i}'].value = bins[ind]
+        for ind, company in enumerate(companies):
+            # if sheet[f'A{i}'].value == 'Научно-производственное Объединение Дортехника ТОО' == company:
+            #     print(company, sheet[f'B{i}'].value, bins[ind])
+            if company == sheet[f'A{i}'].value and sheet[f'B{i}'].value is None:
+                sheet[f'B{i}'].value = bins[ind]
 
-        book.save(f'{working_path}\\Temp1.xlsx')
-        book.close()
+    book.save(f'{working_path}\\Temp1.xlsx')
+    book.close()
 
-        time.sleep(0.3)
-
-    # except:
-    #     print('Error ID 6')
+    time.sleep(0.3)
 
 
 def make_analysis_and_calculations(yesterday):
     hold_session()
-    print('Started making analysis and calculations')
+    logger.info('Started making analysis and calculations')
+    # print('Started making analysis and calculations')
     # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начаты анализ и подсчёт файла')
-    try:                                            # Temp2323
+    try:  # Temp2323
         book = load_workbook(f'{working_path}\\Temp1.xlsx')
 
         contragent_name_halyk = []
@@ -622,7 +628,6 @@ def make_analysis_and_calculations(yesterday):
             if 'комиссия' in purpose.lower() or 'погашение со счета' in purpose.lower() \
                     or 'проценты по кредиту' in purpose.lower() or 'выдача размена' in purpose.lower() \
                     or 'для зачисления на картсчета сотрудникам' in purpose.lower():
-
                 matches.append(ind)
 
         sheet = book['Реестры']
@@ -719,7 +724,7 @@ def make_analysis_and_calculations(yesterday):
 
                     num = max(len(contragent_name_halyk[ind].split()), len(contragent_name_reestr.split()))
                     if match * 100.0 / num >= 100 and payment_amount_halyk[ind] == payment_amount_reestr:
-                        print('СХОЖИ: ', contragent_name_halyk[ind], ' | ', contragent_name_reestr)
+                        # print('СХОЖИ: ', contragent_name_halyk[ind], ' | ', contragent_name_reestr)
                         sheet[f'Q{str(i)}'].value = 'Да'
                         matches.append(ind)
                         continue
@@ -747,7 +752,7 @@ def make_analysis_and_calculations(yesterday):
 
         not_matching = np.arange(2, max_rows_halyk)
         matches = np.unique(np.array(matches))
-        print(max_rows_halyk)
+        # print(max_rows_halyk)
 
         for ind in not_matching:
             sheet[f'O{ind + 2}'].value = str('Не идёт')
@@ -776,7 +781,7 @@ def make_analysis_and_calculations(yesterday):
         app.calculate()
 
         sheet = book.sheets['Реестры']
-        print('Started clearing Реестры')
+        # print('Started clearing Реестры')
 
         rng = sheet.range('A19')
         max_row = max(rng.current_region.end('down').row, rng.end('down').row)
@@ -785,7 +790,7 @@ def make_analysis_and_calculations(yesterday):
         cell = f'A{20}:L{ind}'
         sheet.range(cell).font.name = 'Calibri'
         sheet.range(cell).font.size = '11'
-        print('LEN: ', ind)
+        # print('LEN: ', ind)
 
         hold_session()
 
@@ -793,7 +798,7 @@ def make_analysis_and_calculations(yesterday):
         sheet.range(cell).clear_contents()
         sheet.range(cell).clear_formats()
 
-        print('Started clearing Halyk')
+        # print('Started clearing Halyk')
         sheet = book.sheets['Halyk']
 
         rng = sheet.range('A2')
@@ -803,7 +808,7 @@ def make_analysis_and_calculations(yesterday):
         #     if sheet[f'A{ind}'].value is None and sheet[f'B{ind}'].value is None:
         #         break
         #     ind += 1
-        print('LEN: ', ind1)
+        # print('LEN: ', ind1)
 
         cell = f'K{ind1 + 1}:W{10001}'
         sheet.range(cell).clear_contents()
@@ -820,8 +825,6 @@ def make_analysis_and_calculations(yesterday):
 
         try:
             os.remove(f'{working_path}\\Temp1.xlsx')
-            # os.remove(f'{working_path}\\Temp2323.xlsx')
-            # os.remove(f'{working_path}\\Temp1111.xlsx')
         except:
             ...
 
@@ -847,42 +850,32 @@ if __name__ == '__main__':
     # yesterday1 = yesterday2
     yesterday1 = datetime.date.today().strftime('%d.%m.%y')
     yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
-    # yesterday1 = '05.05.23'
-    # yesterday2 = '05.05.2023'
-    calendar = pd.read_excel(f'{save_xlsx_path}\\Производственный календарь {yesterday2[-4:]}.xlsx')
+    # yesterday1 = '10.05.23'
+    # yesterday2 = '10.05.2023'
+    calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
     cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
     cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
 
     if cur_day_type != 'Holiday':
-
-        print('Started current date: ', yesterday2)
+        logger = logging.getLogger(logger_name)
+        # print('Started current date: ', yesterday2)
         weekends = []
+        weekends_type = []
 
         for i in range(cur_day_index - 1, 0, -1):
             weekends.append(calendar['Day'].iloc[i][:6] + '20' + calendar['Day'].iloc[i][-2:])
+            weekends_type.append(calendar['Type'].iloc[i])
             if calendar['Type'].iloc[i] == 'Working':
                 yesterday1 = calendar['Day'].iloc[i]
                 break
 
-        print(yesterday1)
-        print(weekends)
-        yesterday = yesterday1[:6] + '20' + yesterday1[-2:]
-        # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начата отработка за {yesterday2}, отрабатывается день {yesterday}')
-        print(yesterday, yesterday1, yesterday2)
-
-        web1 = search_by_date(yesterday)
-
-        # # 1 --------------------------------------------------------------------------
-        #
-        # # 2 --------------------------------------------------------------------------
-
-        df2, yesterdays_reestr_date = documentolog(web1, yesterday)
-        print(yesterdays_reestr_date)
+        # print(yesterday1)
+        # print(weekends)
 
         df = get_first_statement(weekends)
 
-        book = load_workbook(f'{save_xlsx_path}\\Копия Сверка ОБРАЗЕЦ.xlsx')  # origin
+        book = load_workbook(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx')
 
         book.active = book['Halyk']
         sheet = book.active
@@ -893,36 +886,54 @@ if __name__ == '__main__':
             for c_idx, value in enumerate(row, 1):
                 sheet.cell(row=r_idx, column=c_idx, value=value)
 
-        book.save(f'{working_path}\\Temp1.xlsx')  # edit1
+        book.save(f'{working_path}\\Temp1.xlsx')
 
-        # 3 --------------------------------------------------------------------------
-        df1 = odines(yesterdays_reestr_date)  # correct with yesterdays_reestr_date
+        df3 = pd.DataFrame()
 
-        df2 = pd.concat([df2, df1])
+        for ind, yesterday in enumerate(weekends):
 
-        design_number_fmt_and_date(df2, yesterday1)
+            # # 1 --------------------------------------------------------------------------
+
+            web1 = search_by_date(yesterday)
+
+            # # 2 --------------------------------------------------------------------------
+
+            df2, yesterdays_reestr_date = documentolog(web1, yesterday)
+
+            # # 3 --------------------------------------------------------------------------
+
+            if weekends_type[ind] != 'Holiday' and df2 is not None and yesterdays_reestr_date is not None:
+
+                df1 = odines(yesterday)
+
+                df2 = pd.concat([df2, df1])
+
+            df3 = pd.concat([df3, df2])
+
+        design_number_fmt_and_date(df3, yesterday1)
         #
         # 4 --------------------------------------------------------------------------
         #
-        fill_empty_bins()  # edit2 - ОБРАЗЕЦ2323
+        fill_empty_bins()
 
         # 5 --------------------------------------------------------------------------
 
-        len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)  # edit3 - ОБРАЗЕЦ2323
+        len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
+
+        # # FINISHED LOGIC --------------------------------------------------------------------------
 
         send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены: длина {len_reestr} - Реестры, {len_halyk} - Halyk')
 
-        # # FINISHED --------------------------------------------------------------------------
-        end_time_iter = datetime.datetime.now().strftime('%H:%M:%S')
-        print('Time started & ended of current iteration: ', start_time_iter, end_time_iter)
-        timings.append([start_time_iter, end_time_iter])
+        #
+        # end_time_iter = datetime.datetime.now().strftime('%H:%M:%S')
+        # # print('Time started & ended of current iteration: ', start_time_iter, end_time_iter)
+        # timings.append([start_time_iter, end_time_iter])
+        #
+        # end_time = datetime.datetime.now().strftime('%H:%M:%S')
+        # end_time_secs = time.time()
+        # print('Time of all iterations: ')
 
-        end_time = datetime.datetime.now().strftime('%H:%M:%S')
-        end_time_secs = time.time()
-        print('Time of all iterations: ')
-        for i in timings:
-            print(i)
-        print('\nTime started & ended: ', start_time, end_time)
-        print('Total elapsed time: ', end_time_secs - start_time_secs)
+        # print('\nTime started & ended: ', start_time, end_time)
+        # print('Total elapsed time: ', end_time_secs - start_time_secs)
 
-        send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject='Сверка выписок', body='Сверка выписок завершилась', username=smtp_author)
+        send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка выписок ROBOT - {yesterday2}', body=f'Сверка выписок за {yesterday2} завершилась', username=smtp_author)
