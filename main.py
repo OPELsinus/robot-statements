@@ -63,8 +63,6 @@ class Registry(Web):
         self.wait_element('//span[@class="user_shortinfo_infoname"]')
         return self
 
-    def get_cur_url(self):
-        return self.get_current_url
 
 
 def search_by_date(yest):
@@ -83,7 +81,7 @@ def search_by_date(yest):
     time.sleep(0.1)
 
     # Кнопка "Документы -> Финансовые -> Реестр на оплату"
-    web.find_element('//*[@id="header_menu"]/li[7]/div/ul/li[9]/div/ul/li[5]/a').click()
+    web.find_element('//*[@id="header_menu"]/li[7]/div/ul/li[9]/div/ul/li[9]/a').click()
 
     web.load()
 
@@ -144,8 +142,8 @@ def documentolog(web, yesterday):
     if 'desc' in order and 'current' not in order:
         web.find_element('//*[@id="grid_col_f_4121eee"]/span').click()
 
-    time.sleep(1)
-
+        time.sleep(1.5)
+    time.sleep(0.1)
     texts = []
     links = []
     times = []
@@ -155,7 +153,7 @@ def documentolog(web, yesterday):
     end = 13
 
     cells = web.find_elements('//*[contains(@id, "grid_cell")]/a')
-    time.sleep(0)
+
     for ind, cell in enumerate(cells):
         try:
             if ind % 13 == 0:
@@ -163,7 +161,7 @@ def documentolog(web, yesterday):
             texts.append(cell.get_attr('text'))
         except:
             send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА1')
-    print(links, len(links))
+
     while end <= len(texts):
         rows.append(texts[start:end])
         start, end = start + 13, end + 13
@@ -241,7 +239,8 @@ def documentolog(web, yesterday):
                     break
 
                 except:
-                    send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА2')
+                    ...
+                    # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА2')
         except:
             break
 
@@ -345,7 +344,7 @@ def get_data_from_reestr(web):
         df3 = pd.DataFrame({'Поставщик': provider_name, 'БИН / ИИН получателя': provider_bin_iin, 'Реестр': reestr_title, 'Статья в ДДС': statement_in_dds, 'Валюта платежа': payment_currency,
                             'Сумма к оплате': amount_to_pay, 'Сумма к оплате KZT': amount_to_pay, 'Курс': 1, 'Дата оплаты': payment_date, 'Skip': '', 'Проверка статьи': statement_check, 'Название статьи': ''})
         hold_session()
-        logger.info(f'DF Length: {len(df3)}')
+        # logger.info(f'DF Length: {len(df3)}')
         return df3
 
     # except:
@@ -380,7 +379,7 @@ def get_first_statement(weekends):
     hold_session()
     # print('Started getting first statement')
     df1 = pd.DataFrame()
-
+    print(weekends)
     for ind, day in enumerate(weekends[::-1]):
         month = int(day.split('.')[1])
 
@@ -394,25 +393,28 @@ def get_first_statement(weekends):
                                 df2 = pd.read_excel(rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\{subfolders}\KZT народный за {day}.xls')
                                 if len(df1) != 0:
                                     df2 = df2.iloc[10:]
-                                df2 = df2.iloc[:-1]
+                                if len(weekends) > 1:
+                                    df2 = df2.iloc[:-1]
                                 df1 = pd.concat([df1, df2])
                     except:
                         if day in subfolders and 'kzt народный' in subfolders.lower():
                             df2 = pd.read_excel(rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\KZT народный за {day}.xls')
                             if len(df1) != 0:
                                 df2 = df2.iloc[10:]
-                            df2 = df2.iloc[:-1]
+                            if len(weekends) > 1:
+                                df2 = df2.iloc[:-1]
                             df1 = pd.concat([df1, df2])
 
     df1.dropna(how='all', inplace=True)
-    # print(len(df1))
-    # df1.to_excel(r'C:\Users\Abdykarim.D\Desktop\lolus.xlsx')
 
-    try:
+    if True:
 
         df1.columns = df1.iloc[7]
 
-        df1 = df1[df1['Дебет'].notna()].iloc[1:-1]
+        if len(weekends) > 1:
+            df1 = df1[df1['Дебет'].notna()].iloc[1:]
+        else:
+            df1 = df1[df1['Дебет'].notna()].iloc[1:-1]
 
         try:
             df1['Дебет'] = df1['Дебет'].apply(lambda x: x.replace(' ', ''))
@@ -423,62 +425,56 @@ def get_first_statement(weekends):
         df1['Дата валютирования'] = pd.to_datetime(df1['Дата валютирования'], format='%d.%m.%Y')
         df1['Дата валютирования'] = df1['Дата валютирования'].dt.strftime('%d.%m.%y')
 
+        # print(len(df1))
+        # df1.to_excel(r'C:\Users\Abdykarim.D\Desktop\lolus.xlsx')
+
         return df1
 
-    except:
-        send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА4')
+    # except:
+    #     send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА4')
 
 
 def odines(yesterdays_reestr_date):
     # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начат 1С')
     app = Odines()
 
-    if True:
 
-        app.auth()
-        app.find_element({"title": "БДР", "class_name": "", "control_type": "Button", "visible_only": True,
-                          "enabled_only": True, "found_index": 0}).click()
-        time.sleep(0.1)
-        app.find_element({"title": "Реестр платежей", "class_name": "", "control_type": "MenuItem", "visible_only": True,
-                          "enabled_only": True, "found_index": 0}).click()
+    app.auth()
+    app.find_element({"title": "БДР", "class_name": "", "control_type": "Button", "visible_only": True,
+                      "enabled_only": True, "found_index": 0}).click()
+    time.sleep(0.1)
+    app.find_element({"title": "Реестр платежей", "class_name": "", "control_type": "MenuItem", "visible_only": True,
+                      "enabled_only": True, "found_index": 0}).click()
 
-        app.wait_element({"title": "Установить период...", "class_name": "", "control_type": "Button", "visible_only": True,
-                          "enabled_only": True, "found_index": 0}, timeout=2)
+    app.wait_element({"title": "Установить период...", "class_name": "", "control_type": "Button", "visible_only": True,
+                      "enabled_only": True, "found_index": 0}, timeout=2)
 
-        app.find_element({"title": "Установить период...", "class_name": "", "control_type": "Button", "visible_only": True,
-                          "enabled_only": True, "found_index": 0}).click()
+    app.find_element({"title": "Установить период...", "class_name": "", "control_type": "Button", "visible_only": True,
+                      "enabled_only": True, "found_index": 0}).click()
 
-        app.wait_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True,
-                          "enabled_only": True, "found_index": 0}, timeout=10)
+    app.wait_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True,
+                      "enabled_only": True, "found_index": 0}, timeout=10)
 
-        app.switch({"title": "Выберите период", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window", "visible_only": True, "enabled_only": True, "found_index": 0})
+    app.switch({"title": "Выберите период", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window", "visible_only": True, "enabled_only": True, "found_index": 0})
 
-        yesterdays_reestr_date = yesterdays_reestr_date.replace('.', '')[:4] + yesterdays_reestr_date.replace('.', '')[-2:]
+    yesterdays_reestr_date = yesterdays_reestr_date.replace('.', '')[:4] + yesterdays_reestr_date.replace('.', '')[-2:]
 
-        app.find_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True,
-                          "enabled_only": True, "found_index": 0}).type_keys(yesterdays_reestr_date, app.keys.TAB)
+    for i in range(5):
+        try:
 
-        app.find_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True,
-                          "enabled_only": True, "found_index": 1}).type_keys(yesterdays_reestr_date, app.keys.TAB)
+            app.find_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True,
+                              "enabled_only": True, "found_index": 0}).type_keys(yesterdays_reestr_date, app.keys.TAB)
 
-        app.find_element({"title": "Выбрать", "class_name": "", "control_type": "Button",
-                          "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+            app.find_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True,
+                              "enabled_only": True, "found_index": 1}).type_keys(yesterdays_reestr_date, app.keys.TAB)
 
-        keyboard.press_and_release('ctrl+a')
-        time.sleep(0.1)
+            app.find_element({"title": "Выбрать", "class_name": "", "control_type": "Button",
+                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-        keyboard.press_and_release('ctrl+c')
-        time.sleep(2)
+            df = pd.DataFrame(columns=cols)
 
-        df2 = pd.read_clipboard()
-        counter = len(df2)
-
-        df = pd.DataFrame(columns=cols)
-
-        for i in range(counter + 1):
             keyboard.press_and_release('down')
 
-        for i in range(counter + 1):
             keyboard.press_and_release('enter')
             app.switch({"title": "", "class_name": "", "control_type": "Pane", "visible_only": True,
                         "enabled_only": True, "found_index": 36})
@@ -520,20 +516,22 @@ def odines(yesterdays_reestr_date):
 
             time.sleep(0.1)
 
-        # При копировании из 1С столбец Согласован пропадает и столбцы дат (не вычислил почему только они) смещаются на 1 вправо!!!
-        df['Дата выписки'] = df['Дата выписки'].apply(lambda x: x.rstrip('.1'))
-        df['Дата выписки'] = df['Дата выписки'].apply(lambda x: x[:6] + x[-2:])
+            break
 
-        df['Сумма документа'] = df['Сумма документа'].apply(lambda x: re.sub(r'\s+', '', x.replace(',', '.')))
-        df1 = pd.DataFrame({'Поставщик': df['Контрагент'], 'БИН / ИИН получателя': df['БИН / ИИН'].astype(str), 'Реестр': 'Реестр 1С', 'Статья в ДДС': '', 'Валюта платежа': 'KZT',
-                            'Сумма к оплате': df['Сумма документа'].astype(float), 'Сумма к оплате KZT': df['Сумма документа'].astype(float), 'Курс': 1, 'Дата оплаты': df['Дата выписки'], 'Skip': '', 'Проверка статьи': df['Код БДДС'], 'Название статьи': df['Статья затрат']})
-        app.quit()
-        time.sleep(1)
+        except:
+            pass
 
-        return df1
+    # При копировании из 1С столбец Согласован пропадает и столбцы дат (не вычислил почему только они) смещаются на 1 вправо!!!
+    df['Дата выписки'] = df['Дата выписки'].apply(lambda x: x.rstrip('.1'))
+    df['Дата выписки'] = df['Дата выписки'].apply(lambda x: x[:6] + x[-2:])
 
-    # except:
-    #     print('Error ID 7')
+    df['Сумма документа'] = df['Сумма документа'].apply(lambda x: re.sub(r'\s+', '', x.replace(',', '.')))
+    df1 = pd.DataFrame({'Поставщик': df['Контрагент'], 'БИН / ИИН получателя': df['БИН / ИИН'].astype(str), 'Реестр': 'Реестр 1С', 'Статья в ДДС': '', 'Валюта платежа': 'KZT',
+                        'Сумма к оплате': df['Сумма документа'].astype(float), 'Сумма к оплате KZT': df['Сумма документа'].astype(float), 'Курс': 1, 'Дата оплаты': df['Дата выписки'], 'Skip': '', 'Проверка статьи': df['Код БДДС'], 'Название статьи': df['Статья затрат']})
+    app.quit()
+    time.sleep(1)
+
+    return df1
 
 
 def design_number_fmt_and_date(df2, yest):
@@ -597,7 +595,7 @@ def make_analysis_and_calculations(yesterday):
     logger.info('Started making analysis and calculations')
     # print('Started making analysis and calculations')
     # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начаты анализ и подсчёт файла')
-    try:  # Temp2323
+    if True:  # Temp2323
         book = load_workbook(f'{working_path}\\Temp1.xlsx')
 
         contragent_name_halyk = []
@@ -621,14 +619,6 @@ def make_analysis_and_calculations(yesterday):
             bin_halyk.append(sheet[f'F{str(i)}'].value)
 
         matches = []
-
-        for ind, purpose in enumerate(payment_purpose_halyk):
-
-            # частично 3.2
-            if 'комиссия' in purpose.lower() or 'погашение со счета' in purpose.lower() \
-                    or 'проценты по кредиту' in purpose.lower() or 'выдача размена' in purpose.lower() \
-                    or 'для зачисления на картсчета сотрудникам' in purpose.lower():
-                matches.append(ind)
 
         sheet = book['Реестры']
 
@@ -677,6 +667,11 @@ def make_analysis_and_calculations(yesterday):
                 #     print('------------------------------------------')
                 # if payment_amount_reestr == 160200 or payment_amount_reestr == '160200':
                 #     print(payment_amount_halyk[ind], payment_amount_reestr, contragent_name_reestr, contragent_name_halyk[ind])
+
+                if 'комиссия' in payment_purpose_halyk[ind].lower():
+                    matches.append(ind)
+                    continue
+
                 # 2 пункт
                 if ('покупка' in payment_purpose_halyk[ind].lower() and 'валют' in payment_purpose_halyk[ind].lower()) and currency in ['USD', 'EUR', 'RUB'] and contragent_name_halyk[ind] == contragent_name_reestr and payment_amount_halyk[ind] == payment_amount_reestr:
                     sheet[f'Q{str(i)}'].value = 'Да'
@@ -693,6 +688,11 @@ def make_analysis_and_calculations(yesterday):
                         contragent_name_reestr.lower() == 'сотрудники' and payment_amount_halyk[ind] == payment_amount_reestr:
                     sheet[f'Q{str(i)}'].value = 'Да'
                     # print('---', payment_amount_reestr, payment_amount_halyk[ind])
+                    matches.append(ind)
+                    continue
+
+                if ('погашение со счета' in payment_purpose_halyk[ind].lower() or 'проценты по кредиту' in payment_purpose_halyk[ind].lower() or 'выдача размена' in payment_purpose_halyk[ind].lower() or 'для зачисления на картсчета сотрудникам' in payment_purpose_halyk[ind].lower())\
+                        and payment_amount_halyk[ind] == payment_amount_reestr and (bin_halyk[ind] == reestr_bin or contragent_name_halyk[ind] == contragent_name_reestr):
                     matches.append(ind)
                     continue
 
@@ -804,11 +804,7 @@ def make_analysis_and_calculations(yesterday):
         rng = sheet.range('A2')
         max_row = max(rng.current_region.end('down').row, rng.end('down').row)
         ind1 = max_row
-        # while True:
-        #     if sheet[f'A{ind}'].value is None and sheet[f'B{ind}'].value is None:
-        #         break
-        #     ind += 1
-        # print('LEN: ', ind1)
+
 
         cell = f'K{ind1 + 1}:W{10001}'
         sheet.range(cell).clear_contents()
@@ -819,10 +815,12 @@ def make_analysis_and_calculations(yesterday):
 
         book.save(f'{save_xlsx_path}\\Сверка {yesterday}.xlsx')
         book.save(f'{working_path}\\Сверка {yesterday}.xlsx')
-        book.close()
-        app.quit()
-        app.kill()
-
+        try:
+            book.close()
+            app.quit()
+            app.kill()
+        except:
+            ...
         try:
             os.remove(f'{working_path}\\Temp1.xlsx')
         except:
@@ -830,28 +828,25 @@ def make_analysis_and_calculations(yesterday):
 
         return [ind, ind1]
 
-    except:
-        send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА5')
+    # except:
+    #     send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА5')
 
 
 # ORIGIN CODE
 if __name__ == '__main__':
-    # os.remove(f'{working_path}\\Temp4444.xlsx')
-    # os.remove(f'{working_path}\\Temp2323.xlsx')
-    # os.remove(f'{working_path}\\Temp1111.xlsx')
+
     start_time = datetime.datetime.now().strftime('%H:%M:%S')
     start_time_secs = time.time()
     timings = []
-    # ['11.04.2023', '12.04.2023', '13.04.2023', '14.04.2023', '17.04.2023', '18.04.2023', '19.04.2023', '20.04.2023', '21.04.2023', '24.04.2023', '25.04.2023', '26.04.2023', '27.04.2023', '03.05.2023']:
-
     start_time_iter = datetime.datetime.now().strftime('%H:%M:%S')
 
     update_credentials(save_xlsx_path, owa_username, owa_password)
-    # yesterday1 = yesterday2
+
     yesterday1 = datetime.date.today().strftime('%d.%m.%y')
     yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
     # yesterday1 = '10.05.23'
     # yesterday2 = '10.05.2023'
+
     calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
     cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
@@ -891,7 +886,6 @@ if __name__ == '__main__':
         df3 = pd.DataFrame()
 
         for ind, yesterday in enumerate(weekends):
-
             # # 1 --------------------------------------------------------------------------
 
             web1 = search_by_date(yesterday)
@@ -910,13 +904,15 @@ if __name__ == '__main__':
 
             df3 = pd.concat([df3, df2])
 
+        # # 4 --------------------------------------------------------------------------
+
         design_number_fmt_and_date(df3, yesterday1)
-        #
-        # 4 --------------------------------------------------------------------------
-        #
+
+        # # 5 --------------------------------------------------------------------------
+
         fill_empty_bins()
 
-        # 5 --------------------------------------------------------------------------
+        # # 6 --------------------------------------------------------------------------
 
         len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
 
@@ -924,16 +920,8 @@ if __name__ == '__main__':
 
         send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены: длина {len_reestr} - Реестры, {len_halyk} - Halyk')
 
-        #
-        # end_time_iter = datetime.datetime.now().strftime('%H:%M:%S')
-        # # print('Time started & ended of current iteration: ', start_time_iter, end_time_iter)
-        # timings.append([start_time_iter, end_time_iter])
-        #
-        # end_time = datetime.datetime.now().strftime('%H:%M:%S')
-        # end_time_secs = time.time()
-        # print('Time of all iterations: ')
-
-        # print('\nTime started & ended: ', start_time, end_time)
-        # print('Total elapsed time: ', end_time_secs - start_time_secs)
-
         send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка выписок ROBOT - {yesterday2}', body=f'Сверка выписок за {yesterday2} завершилась', username=smtp_author)
+
+    else:
+        print(1)
+

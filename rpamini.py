@@ -506,10 +506,6 @@ class Web:
         self.driver.get(url)
 
     @try_except_decorator
-    def get_current_url(self):
-        return self.driver.current_url
-
-    @try_except_decorator
     def find_elements(self, selector, timeout=None, event=None, by='xpath'):
         if event is None:
             event = expected_conditions.presence_of_element_located
