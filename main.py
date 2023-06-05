@@ -391,11 +391,13 @@ def get_first_statement(weekends):
 
                             if day in files and 'kzt народный' in files.lower():
                                 df2 = pd.read_excel(rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\{subfolders}\KZT народный за {day}.xls')
+
                                 if len(df1) != 0:
                                     df2 = df2.iloc[10:]
                                 if len(weekends) > 1:
                                     df2 = df2.iloc[:-1]
                                 df1 = pd.concat([df1, df2])
+                                break
                     except:
                         if day in subfolders and 'kzt народный' in subfolders.lower():
                             df2 = pd.read_excel(rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\KZT народный за {day}.xls')
@@ -438,7 +440,6 @@ def odines(yesterdays_reestr_date):
     # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начат 1С')
     app = Odines()
 
-
     app.auth()
     app.find_element({"title": "БДР", "class_name": "", "control_type": "Button", "visible_only": True,
                       "enabled_only": True, "found_index": 0}).click()
@@ -459,7 +460,10 @@ def odines(yesterdays_reestr_date):
 
     yesterdays_reestr_date = yesterdays_reestr_date.replace('.', '')[:4] + yesterdays_reestr_date.replace('.', '')[-2:]
 
+    df = pd.DataFrame(columns=cols)
+
     for i in range(5):
+
         try:
 
             app.find_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True,
@@ -471,56 +475,72 @@ def odines(yesterdays_reestr_date):
             app.find_element({"title": "Выбрать", "class_name": "", "control_type": "Button",
                               "visible_only": True, "enabled_only": True, "found_index": 0}).click()
 
-            df = pd.DataFrame(columns=cols)
-
-            keyboard.press_and_release('down')
-
-            keyboard.press_and_release('enter')
-            app.switch({"title": "", "class_name": "", "control_type": "Pane", "visible_only": True,
-                        "enabled_only": True, "found_index": 36})
-
-            keyboard.press_and_release('tab')
-            time.sleep(.1)
-            keyboard.press_and_release('tab')
-            time.sleep(.1)
-            keyboard.press_and_release('tab')
-            time.sleep(.1)
-            keyboard.press_and_release('tab')
-            time.sleep(.1)
-
             keyboard.press_and_release('ctrl+a')
 
             time.sleep(.2)
 
             tools.clipboard_set('')
-            while len(pyperclip.paste()) < 10:
+            while len(pyperclip.paste()) == 0:
                 keyboard.press_and_release('ctrl+c')
                 time.sleep(0.3)
 
-            df1 = csv.reader(pyperclip.paste().splitlines(), delimiter='\t')  # считывание таблицы из 1С в пандас
-            dt = [row1 for row1 in df1]
+            all_reestrs_in_1c = csv.reader(pyperclip.paste().splitlines(), delimiter='\t')  # считывание таблицы из 1С в пандас
+            dt = [row1 for row1 in all_reestrs_in_1c]
 
-            df1 = pd.DataFrame(dt)
-            df1.columns = cols
+            all_reestrs_in_1c = pd.DataFrame(dt)
 
-            tools.clipboard_set('')
-            # row = df1.columns
-            # df1.columns = cols
-            # df1.loc[0:0] = row
+            print(all_reestrs_in_1c, len(all_reestrs_in_1c))
 
-            df = pd.concat([df, df1], ignore_index=True)
+            keyboard.press_and_release('page_down')
 
-            keyboard.press_and_release('esc')
+            for i in range(len(all_reestrs_in_1c)):
 
-            keyboard.press_and_release('up')
+                keyboard.press_and_release('enter')
+                app.switch({"title": "", "class_name": "", "control_type": "Pane", "visible_only": True,
+                            "enabled_only": True, "found_index": 36})
 
-            time.sleep(0.1)
+                keyboard.press_and_release('tab')
+                time.sleep(.1)
+                keyboard.press_and_release('tab')
+                time.sleep(.1)
+                keyboard.press_and_release('tab')
+                time.sleep(.1)
+                keyboard.press_and_release('tab')
+                time.sleep(.1)
+
+                keyboard.press_and_release('ctrl+a')
+
+                time.sleep(.2)
+
+                tools.clipboard_set('')
+                while len(pyperclip.paste()) < 10:
+                    keyboard.press_and_release('ctrl+c')
+                    time.sleep(0.3)
+
+                df1 = csv.reader(pyperclip.paste().splitlines(), delimiter='\t')  # считывание таблицы из 1С в пандас
+                dt = [row1 for row1 in df1]
+
+                df1 = pd.DataFrame(dt)
+                df1.columns = cols
+
+                tools.clipboard_set('')
+                # row = df1.columns
+                # df1.columns = cols
+                # df1.loc[0:0] = row
+                df = pd.concat([df, df1], ignore_index=True)
+
+                keyboard.press_and_release('esc')
+
+                time.sleep(0.2)
+
+                keyboard.press_and_release('up')
+
+                time.sleep(0.1)
 
             break
 
         except:
             pass
-
     # При копировании из 1С столбец Согласован пропадает и столбцы дат (не вычислил почему только они) смещаются на 1 вправо!!!
     df['Дата выписки'] = df['Дата выписки'].apply(lambda x: x.rstrip('.1'))
     df['Дата выписки'] = df['Дата выписки'].apply(lambda x: x[:6] + x[-2:])
@@ -844,8 +864,8 @@ if __name__ == '__main__':
 
     yesterday1 = datetime.date.today().strftime('%d.%m.%y')
     yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
-    # yesterday1 = '10.05.23'
-    # yesterday2 = '10.05.2023'
+    # yesterday1 = '02.06.23'
+    # yesterday2 = '02.06.2023'
 
     calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
@@ -904,15 +924,15 @@ if __name__ == '__main__':
 
             df3 = pd.concat([df3, df2])
 
-        # # 4 --------------------------------------------------------------------------
+        # 4 -----------------------------------------------------------------------------------------
 
         design_number_fmt_and_date(df3, yesterday1)
 
-        # # 5 --------------------------------------------------------------------------
+        # # 5 ---------------------------------------------------------------------------------------
 
         fill_empty_bins()
 
-        # # 6 --------------------------------------------------------------------------
+        # # 6 ---------------------------------------------------------------------------------------
 
         len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
 

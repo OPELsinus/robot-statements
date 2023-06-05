@@ -68,7 +68,6 @@ working_path.mkdir(exist_ok=True, parents=True)
 save_xlsx_path = config_data['save_xlsx_path']
 chat_id = config_data['chat_id']
 
-
 if ctypes.windll.user32.GetKeyboardLayout(0) != 67699721:
     __err__ = 'Смените раскладку на ENG'
     logger.exception(__err__)

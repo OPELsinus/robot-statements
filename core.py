@@ -9,7 +9,7 @@ from pyautogui import moveTo
 from pywinauto.timings import wait_until_passes
 
 from config import process_list_path, odines_username_rpa, odines_password_rpa, \
-    logger_name
+    logger_name, odines_username, odines_password
 from rpamini import App, try_except_decorator
 from tools import hold_session
 
@@ -52,10 +52,10 @@ class Odines(App):
             {"title": "", "class_name": "", "control_type": "ComboBox", "visible_only": True, "enabled_only": True,
              "found_index": 0})
         element_.click()
-        element_.type_keys('Beerobot', self.keys.TAB, clear=True)
+        element_.type_keys(odines_username, self.keys.TAB, clear=True)
         self.find_element(
             {"title": "", "class_name": "", "control_type": "Edit", "visible_only": True, "enabled_only": True,
-             "found_index": 0}).set_text('Br123456') # odines_password_rpa
+             "found_index": 0}).set_text(odines_password)  # odines_password
 
         self.find_element(
             {"title": "OK", "class_name": "", "control_type": "Button", "visible_only": True, "enabled_only": True,
