@@ -277,9 +277,12 @@ def get_data_from_reestr(web):
         hold_session()
         logger.info('Found 6 cells')
 
-        for cell in cells1[1:]:
+        for id, cell in enumerate(cells1[1:]):
             text = cell.get_attr('text').strip()
-            provider_name.append(text) if len(text) != 0 else None
+            if len(cells2[id + 1].get_attr('text').strip()) != 0:
+                provider_name.append(text) if len(text) != 0 else provider_name.append('')
+            else:
+                provider_name.append(text) if len(text) != 0 else None
         for cell in cells2[1:]:
             text = cell.get_attr('text').strip()
             provider_bin_iin.append(text) if len(text) != 0 else None
@@ -332,7 +335,10 @@ def get_data_from_reestr(web):
         statement_check = []
         for ind, string in enumerate(statement_in_dds):
             statement_in_dds[ind] = string.split(';')[0]
-            statement_check.append(string.split(';')[1].strip().replace(' ', ''))
+            try:
+                statement_check.append(string.split(';')[1].strip().replace(' ', ''))
+            except:
+                statement_check.append(string)
 
         for ind in range(len(payment_date)):
             payment_date[ind] = payment_date[ind].strip()
@@ -340,9 +346,23 @@ def get_data_from_reestr(web):
 
         amount_to_pay = [s.replace(' ', '') for s in amount_to_pay]
         amount_to_pay = np.asarray(amount_to_pay).astype(float)
-
-        df3 = pd.DataFrame({'Поставщик': provider_name, 'БИН / ИИН получателя': provider_bin_iin, 'Реестр': reestr_title, 'Статья в ДДС': statement_in_dds, 'Валюта платежа': payment_currency,
-                            'Сумма к оплате': amount_to_pay, 'Сумма к оплате KZT': amount_to_pay, 'Курс': 1, 'Дата оплаты': payment_date, 'Skip': '', 'Проверка статьи': statement_check, 'Название статьи': ''})
+        # for ind, j in enumerate(provider_name):
+        #     print(ind, j)
+        # print(len(provider_name), len(provider_bin_iin), len(reestr_title), reestr_title, len(statement_in_dds), len(payment_currency), len(amount_to_pay), len(payment_date), len(statement_in_dds))
+        df3 = pd.DataFrame({
+            'Поставщик': provider_name,
+            'БИН / ИИН получателя': provider_bin_iin,
+            'Реестр': reestr_title,
+            'Статья в ДДС': statement_in_dds,
+            'Валюта платежа': payment_currency,
+            'Сумма к оплате': amount_to_pay,
+            'Сумма к оплате KZT': amount_to_pay,
+            'Курс': 1,
+            'Дата оплаты': payment_date,
+            'Skip': '',
+            'Проверка статьи': statement_check,
+            'Название статьи': ''
+        })
         hold_session()
         # logger.info(f'DF Length: {len(df3)}')
         return df3
@@ -924,7 +944,7 @@ if __name__ == '__main__':
 
             df3 = pd.concat([df3, df2])
 
-        # 4 -----------------------------------------------------------------------------------------
+        # # 4 ---------------------------------------------------------------------------------------
 
         design_number_fmt_and_date(df3, yesterday1)
 
@@ -938,7 +958,7 @@ if __name__ == '__main__':
 
         # # FINISHED LOGIC --------------------------------------------------------------------------
 
-        send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены: длина {len_reestr} - Реестры, {len_halyk} - Halyk')
+        send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
 
         send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка выписок ROBOT - {yesterday2}', body=f'Сверка выписок за {yesterday2} завершилась', username=smtp_author)
 
