@@ -280,7 +280,7 @@ def get_data_from_reestr(web):
         for id, cell in enumerate(cells1[1:]):
             text = cell.get_attr('text').strip()
             if len(cells2[id + 1].get_attr('text').strip()) != 0:
-                provider_name.append(text) if len(text) != 0 else provider_name.append('')
+                provider_name.append(text) if len(text) != 0 else provider_name.append(' ')
             else:
                 provider_name.append(text) if len(text) != 0 else None
         for cell in cells2[1:]:
@@ -884,8 +884,8 @@ if __name__ == '__main__':
 
     yesterday1 = datetime.date.today().strftime('%d.%m.%y')
     yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
-    # yesterday1 = '02.06.23'
-    # yesterday2 = '02.06.2023'
+    # yesterday1 = '14.06.23'
+    # yesterday2 = '14.06.2023'
 
     calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
