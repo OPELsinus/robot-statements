@@ -18,7 +18,7 @@ from core import Odines
 
 import tools
 from tools import hold_session, send_message_by_smtp, send_message_to_orc, update_credentials
-from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name
+from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name, save_xlsx_path_qlik
 from rpamini import Web
 
 cols = ['N', 'Согласован', 'Дата выписки', 'Дата планируемой оплаты', 'Заявка на оплату',
@@ -845,7 +845,6 @@ def make_analysis_and_calculations(yesterday):
         max_row = max(rng.current_region.end('down').row, rng.end('down').row)
         ind1 = max_row
 
-
         cell = f'K{ind1 + 1}:W{10001}'
         sheet.range(cell).clear_contents()
         sheet.range(cell).clear_formats()
@@ -854,7 +853,7 @@ def make_analysis_and_calculations(yesterday):
         sheet.range(f'L1:O{ind1 + 1}').api.HorizontalAlignment = HAlign.xlHAlignCenter
 
         book.save(f'{save_xlsx_path}\\Сверка {yesterday}.xlsx')
-        book.save(f'{working_path}\\Сверка {yesterday}.xlsx')
+        book.save(f'{save_xlsx_path_qlik}\\Сверка {yesterday}.xlsx')
         try:
             book.close()
             app.quit()
@@ -881,11 +880,12 @@ if __name__ == '__main__':
     start_time_iter = datetime.datetime.now().strftime('%H:%M:%S')
 
     update_credentials(save_xlsx_path, owa_username, owa_password)
+    update_credentials(save_xlsx_path_qlik, owa_username, owa_password)
 
     yesterday1 = datetime.date.today().strftime('%d.%m.%y')
     yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
-    # yesterday1 = '14.06.23'
-    # yesterday2 = '14.06.2023'
+    # yesterday1 = '16.06.23'
+    # yesterday2 = '16.06.2023'
 
     calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
