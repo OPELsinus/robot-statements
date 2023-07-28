@@ -60,8 +60,8 @@ logger.setLevel(logging.DEBUG)
 
 config_path = global_path.joinpath(f'.agent\\robot-statements\\{socket.gethostbyname(socket.gethostname())}\\config.json')
 config_data = json_read(config_path)
-SEDLogin = config_data['SEDLogin']
-SEDPass = config_data['SEDPass']
+SEDLogin = global_env_data['sed_username']
+SEDPass = global_env_data['sed_password']
 download_path = Path.home().joinpath('downloads')
 working_path = root_path.joinpath('working_path')
 working_path.mkdir(exist_ok=True, parents=True)
