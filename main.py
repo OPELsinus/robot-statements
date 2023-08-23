@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import time
+from pathlib import Path
 
 import keyboard
 import numpy as np
@@ -18,7 +19,7 @@ from core import Odines
 
 import tools
 from tools import hold_session, send_message_by_smtp, send_message_to_orc, update_credentials
-from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name, save_xlsx_path_qlik
+from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name, save_xlsx_path_qlik, tg_token
 from rpamini import Web
 
 cols = ['N', 'Согласован', 'Дата выписки', 'Дата планируемой оплаты', 'Заявка на оплату',
@@ -200,7 +201,7 @@ def documentolog(web, yesterday):
                 # print(row, links[ind])
     logger.info(f'Went forward')
     # ----------------------------------------------------------------------------------
-    # Выполнение кода до страницы 11
+    # Выполнение кода до страницы 11 ТЗ
     # ----------------------------------------------------------------------------------
 
     # Кнопка "Справочники"
@@ -234,7 +235,7 @@ def documentolog(web, yesterday):
 
                     df1 = fact_oplat_to_reestr(filename, yesterd_reestr_date)
 
-                    os.remove(os.path.join(download_path, filename))
+                    Path.unlink(Path(os.path.join(download_path, filename)))
 
                     break
 
@@ -884,8 +885,8 @@ if __name__ == '__main__':
 
     yesterday1 = datetime.date.today().strftime('%d.%m.%y')
     yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
-    # yesterday1 = '16.06.23'
-    # yesterday2 = '16.06.2023'
+    # yesterday1 = '04.08.23'
+    # yesterday2 = '04.08.2023'
 
     calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
@@ -958,9 +959,9 @@ if __name__ == '__main__':
 
         # # FINISHED LOGIC --------------------------------------------------------------------------
 
-        send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
+        tools.send_message_to_tg(tg_token, chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
 
-        send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка выписок ROBOT - {yesterday2}', body=f'Сверка выписок за {yesterday2} завершилась', username=smtp_author)
+        send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
 
     else:
         print(1)

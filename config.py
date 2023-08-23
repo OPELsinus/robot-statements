@@ -41,6 +41,7 @@ owa_password_compl = global_env_data['owa_password_compl']
 sed_username = global_env_data['sed_username']
 sed_password = global_env_data['sed_password']
 process_list_path = local_path.joinpath('process_list.json')
+tg_token = global_env_data['tg_token']
 
 basic_format = '%(asctime)s%(levelname)s%(message)s'
 date_format = '%Y-%m-%d,%H:%M:%S'
