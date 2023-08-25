@@ -18,8 +18,8 @@ from openpyxl import load_workbook
 from core import Odines
 
 import tools
-from tools import hold_session, send_message_by_smtp, send_message_to_orc, update_credentials
-from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name, save_xlsx_path_qlik, tg_token
+from tools import hold_session, send_message_by_smtp, send_message_to_orc, update_credentials, send_message_to_tg
+from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name, save_xlsx_path_qlik, tg_token, machine_ip
 from rpamini import Web
 
 cols = ['N', 'Согласован', 'Дата выписки', 'Дата планируемой оплаты', 'Заявка на оплату',
@@ -900,78 +900,91 @@ if __name__ == '__main__':
     # yesterday1 = '04.08.23'
     # yesterday2 = '04.08.2023'
 
-    for day in os.listdir(r'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ'):
-        if os.path.isfile(fr'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ\{day}'):
+    search_path = None
+
+    if str(machine_ip) == '10.70.2.2':
+        seacrh_path = r'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ\июль 2023'
+    elif str(machine_ip) == '10.70.2.9':
+        search_path = r'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ'
+
+    print(search_path)
+
+    send_message_to_tg(tg_token, chat_id, f'Started on {machine_ip}')
+
+    for day in os.listdir(seacrh_path):
+        if os.path.isfile(os.path.join(search_path, day)):
+
             print(day.replace('Сверка ', '').replace('.xlsx', ''))
+            send_message_to_tg(tg_token, chat_id, f"Started day {day.replace('Сверка ', '').replace('.xlsx', '')} on {machine_ip}")
 
-        calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
+            calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
-        cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
-        cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
+            cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
+            cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
 
-        if cur_day_type != 'Holiday':
-            logger = logging.getLogger(logger_name)
-            # print('Started current date: ', yesterday2)
-            weekends = []
-            weekends_type = []
+            if cur_day_type != 'Holiday':
+                logger = logging.getLogger(logger_name)
+                # print('Started current date: ', yesterday2)
+                weekends = []
+                weekends_type = []
 
-            for i in range(cur_day_index - 1, 0, -1):
-                weekends.append(calendar['Day'].iloc[i][:6] + '20' + calendar['Day'].iloc[i][-2:])
-                weekends_type.append(calendar['Type'].iloc[i])
-                if calendar['Type'].iloc[i] == 'Working':
-                    yesterday1 = calendar['Day'].iloc[i]
-                    break
+                for i in range(cur_day_index - 1, 0, -1):
+                    weekends.append(calendar['Day'].iloc[i][:6] + '20' + calendar['Day'].iloc[i][-2:])
+                    weekends_type.append(calendar['Type'].iloc[i])
+                    if calendar['Type'].iloc[i] == 'Working':
+                        yesterday1 = calendar['Day'].iloc[i]
+                        break
 
-            # print(yesterday1)
-            # print(weekends)
+                # print(yesterday1)
+                # print(weekends)
 
-            df = get_first_statement(weekends)
+                df = get_first_statement(weekends)
 
-            book = load_workbook(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx')
+                book = load_workbook(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx')
 
-            book.active = book['Halyk']
-            sheet = book.active
+                book.active = book['Halyk']
+                sheet = book.active
 
-            rows = df.to_numpy().tolist()
+                rows = df.to_numpy().tolist()
 
-            for r_idx, row in enumerate(rows, 2):
-                for c_idx, value in enumerate(row, 1):
-                    sheet.cell(row=r_idx, column=c_idx, value=value)
+                for r_idx, row in enumerate(rows, 2):
+                    for c_idx, value in enumerate(row, 1):
+                        sheet.cell(row=r_idx, column=c_idx, value=value)
 
-            book.save(f'{working_path}\\Temp1.xlsx')
+                book.save(f'{working_path}\\Temp1.xlsx')
 
-            df3 = pd.DataFrame()
+                df3 = pd.DataFrame()
 
-            for ind, yesterday in enumerate(weekends):
-                # # 1 --------------------------------------------------------------------------
+                for ind, yesterday in enumerate(weekends):
+                    # # 1 --------------------------------------------------------------------------
 
-                web1 = search_by_date(yesterday)
+                    web1 = search_by_date(yesterday)
 
-                # # 2 --------------------------------------------------------------------------
+                    # # 2 --------------------------------------------------------------------------
 
-                df2, yesterdays_reestr_date = documentolog(web1, yesterday)
+                    df2, yesterdays_reestr_date = documentolog(web1, yesterday)
 
-                # # 3 --------------------------------------------------------------------------
+                    # # 3 --------------------------------------------------------------------------
 
-                if weekends_type[ind] != 'Holiday' and df2 is not None and yesterdays_reestr_date is not None:
+                    if weekends_type[ind] != 'Holiday' and df2 is not None and yesterdays_reestr_date is not None:
 
-                    df1 = odines(yesterday)
+                        df1 = odines(yesterday)
 
-                    df2 = pd.concat([df2, df1])
+                        df2 = pd.concat([df2, df1])
 
-                df3 = pd.concat([df3, df2])
+                    df3 = pd.concat([df3, df2])
 
-            # # 4 ---------------------------------------------------------------------------------------
+                # # 4 ---------------------------------------------------------------------------------------
 
-            design_number_fmt_and_date(df3, yesterday1)
+                design_number_fmt_and_date(df3, yesterday1)
 
-            # # 5 ---------------------------------------------------------------------------------------
+                # # 5 ---------------------------------------------------------------------------------------
 
-            fill_empty_bins()
+                fill_empty_bins()
 
-            # # 6 ---------------------------------------------------------------------------------------
+                # # 6 ---------------------------------------------------------------------------------------
 
-            len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
+                len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
 
         # # FINISHED LOGIC --------------------------------------------------------------------------
 

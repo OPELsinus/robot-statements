@@ -59,6 +59,8 @@ file_handler.setLevel(logging.DEBUG)
 logger.addHandler(file_handler)
 logger.setLevel(logging.DEBUG)
 
+machine_ip = socket.gethostbyname(socket.gethostname())
+
 config_path = global_path.joinpath(f'.agent\\robot-statements\\{socket.gethostbyname(socket.gethostname())}\\config.json')
 config_data = json_read(config_path)
 SEDLogin = global_env_data['sed_username']
