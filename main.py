@@ -901,7 +901,6 @@ if __name__ == '__main__':
     # yesterday2 = '04.08.2023'
 
     search_path = None
-    machine_ip = '10.70.2.2'
 
     if str(machine_ip) == '10.70.2.2':
         search_path = r'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ\июль 2023'
@@ -910,7 +909,7 @@ if __name__ == '__main__':
 
     print(search_path)
 
-    # send_message_to_tg(tg_token, chat_id, f'Started on {machine_ip}')
+    send_message_to_tg(tg_token, chat_id, f'Started on {machine_ip}')
 
     for day in os.listdir(search_path):
         print(os.path.join(search_path, day))
