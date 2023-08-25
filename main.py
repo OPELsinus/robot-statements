@@ -221,29 +221,38 @@ def documentolog(web, yesterday):
     df1 = pd.DataFrame()
 
     for index in range(100):
-        try:
             row = web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').get_attr('text')
 
             if 'Факт' in row and 'оплат' in row and year in row:
 
-                try:
-                    web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').click()
-                    web.find_element('//*[contains(@id, "fileview")]').click()
+                web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').click()
+                web.find_element('//*[contains(@id, "fileview")]').click()
 
-                    filename = web.find_element('//*[contains(@id, "fileview")]').get_attr('text').split()[0]
-                    tools.check_file_downloaded(download_path, filename)
+                filename = None
+                found = False
 
-                    df1 = fact_oplat_to_reestr(filename, yesterd_reestr_date)
+                for wait in range(60):
+                    for file_ in os.listdir(download_path):
+                        if 'факт' in file_.lower() and 'оплат' in file_.lower():
+                            filename = file_
+                            found = True
+                            break
+                    if found:
+                        break
+                    else:
+                        time.sleep(1)
 
-                    Path.unlink(Path(os.path.join(download_path, filename)))
+                print(filename)
+                df1 = fact_oplat_to_reestr(filename, yesterd_reestr_date)
 
-                    break
+                print('Deleting')
+                Path.unlink(Path(os.path.join(download_path, filename)))
+                print('Deleted')
 
-                except:
-                    ...
-                    # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА2')
-        except:
-            break
+                break
+                # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА2')
+        # except:
+        #     break
 
     df2 = pd.concat([df2, df1])
 
@@ -266,134 +275,134 @@ def get_data_from_reestr(web):
     amount_to_pay = []
     payment_date = []
 
-    if True:
-        cells1 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[5]')
-        cells2 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[4]')
-        cells3 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[14]')
-        logger.info('Found 3 cells')
-        hold_session()
-        cells4 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[9]')
-        cells5 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[8]')
-        cells6 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[7]')
-        hold_session()
-        logger.info('Found 6 cells')
+    cells1 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[5]')
+    cells2 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[4]')
+    cells3 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[14]')
+    logger.info('Found 3 cells')
+    hold_session()
+    cells4 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[9]')
+    cells5 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[8]')
+    cells6 = web.find_elements('//*[contains(@id, "field_table_f_")]/tbody//td[7]')
+    hold_session()
+    logger.info('Found 6 cells')
 
-        for id, cell in enumerate(cells1[1:]):
-            text = cell.get_attr('text').strip()
-            if len(cells2[id + 1].get_attr('text').strip()) != 0:
-                provider_name.append(text) if len(text) != 0 else provider_name.append(' ')
-            else:
-                provider_name.append(text) if len(text) != 0 else None
-        for cell in cells2[1:]:
-            text = cell.get_attr('text').strip()
-            provider_bin_iin.append(text) if len(text) != 0 else None
-        for cell in cells3[1:]:
-            text = cell.get_attr('text').strip()
-            statement_in_dds.append(text) if len(text) != 0 else None
-        logger.info('Appended 3 cells')
-        hold_session()
-        for cell in cells4[1:]:
-            text = cell.get_attr('text').strip()
-            payment_currency.append(text) if len(text) != 0 else None
-        for cell in cells5[1:]:
-            text = cell.get_attr('text').strip()
-            amount_to_pay.append(text) if len(text) != 0 else None
-        for cell in cells6[1:]:
-            text = cell.get_attr('text').strip()
-            payment_date.append(text) if len(text) != 0 else None
-        logger.info('Appended 6 cells')
+    for id, cell in enumerate(cells1[1:]):
+        text = cell.get_attr('text').strip()
+        if len(cells2[id + 1].get_attr('text').strip()) != 0:
+            provider_name.append(text) if len(text) != 0 else provider_name.append(' ')
+        else:
+            provider_name.append(text) if len(text) != 0 else None
+    for cell in cells2[1:]:
+        text = cell.get_attr('text').strip()
+        provider_bin_iin.append(text) if len(text) != 0 else None
+    for cell in cells3[1:]:
+        text = cell.get_attr('text').strip()
+        statement_in_dds.append(text) if len(text) != 0 else None
+    logger.info('Appended 3 cells')
+    hold_session()
+    for cell in cells4[1:]:
+        text = cell.get_attr('text').strip()
+        payment_currency.append(text) if len(text) != 0 else None
+    for cell in cells5[1:]:
+        text = cell.get_attr('text').strip()
+        amount_to_pay.append(text) if len(text) != 0 else None
+    for cell in cells6[1:]:
+        text = cell.get_attr('text').strip()
+        payment_date.append(text) if len(text) != 0 else None
+    logger.info('Appended 6 cells')
 
-        if 'го' in reestr_title.lower() and 'доп' not in reestr_title.lower():
-            reestr_title = 'Реестр (ГО)'
+    if 'го' in reestr_title.lower() and 'доп' not in reestr_title.lower():
+        reestr_title = 'Реестр (ГО)'
 
-        elif 'го' in reestr_title.lower() and 'доп' in reestr_title.lower():
-            reestr_title = 'Дополнительный реестр (ГО)'
+    elif 'го' in reestr_title.lower() and 'доп' in reestr_title.lower():
+        reestr_title = 'Дополнительный реестр (ГО)'
 
-        elif 'филиал' in reestr_title.lower() and 'доп' not in reestr_title.lower():
-            reestr_title = 'Реестр (Филиалы)'
+    elif 'филиал' in reestr_title.lower() and 'доп' not in reestr_title.lower():
+        reestr_title = 'Реестр (Филиалы)'
 
-        elif 'филиал' in reestr_title.lower() and 'доп' in reestr_title.lower():
-            reestr_title = 'Дополнительный реестр (Филиалы)'
+    elif 'филиал' in reestr_title.lower() and 'доп' in reestr_title.lower():
+        reestr_title = 'Дополнительный реестр (Филиалы)'
 
-        elif 'инвест' in reestr_title.lower() and 'доп' not in reestr_title.lower():
-            reestr_title = 'Реестр (Инвест)'
+    elif 'инвест' in reestr_title.lower() and 'доп' not in reestr_title.lower():
+        reestr_title = 'Реестр (Инвест)'
 
-        elif 'инвест' in reestr_title.lower() and 'доп' in reestr_title.lower():
-            reestr_title = 'Дополнительный реестр (Инвест)'
+    elif 'инвест' in reestr_title.lower() and 'доп' in reestr_title.lower():
+        reestr_title = 'Дополнительный реестр (Инвест)'
 
-        elif 'магнум астана' in reestr_title.lower() and 'доп' not in reestr_title.lower():
-            reestr_title = 'Магнум Астана'
+    elif 'магнум астана' in reestr_title.lower() and 'доп' not in reestr_title.lower():
+        reestr_title = 'Магнум Астана'
 
-        elif 'магнум астана' in reestr_title.lower() and 'доп' in reestr_title.lower():
-            reestr_title = 'Дополнительный реестр (Магнум Астана)'
+    elif 'магнум астана' in reestr_title.lower() and 'доп' in reestr_title.lower():
+        reestr_title = 'Дополнительный реестр (Магнум Астана)'
 
-        elif 'реестр пф' in reestr_title.lower() and 'доп' not in reestr_title.lower():
-            reestr_title = 'Реестр ПФ'
+    elif 'реестр пф' in reestr_title.lower() and 'доп' not in reestr_title.lower():
+        reestr_title = 'Реестр ПФ'
 
-        elif 'реестр 1' in reestr_title.lower() and 'доп' not in reestr_title.lower():
-            reestr_title = 'Реестр 1С'
+    elif 'реестр 1' in reestr_title.lower() and 'доп' not in reestr_title.lower():
+        reestr_title = 'Реестр 1С'
 
-        statement_check = []
-        for ind, string in enumerate(statement_in_dds):
-            statement_in_dds[ind] = string.split(';')[0]
-            try:
-                statement_check.append(string.split(';')[1].strip().replace(' ', ''))
-            except:
-                statement_check.append(string)
+    statement_check = []
+    for ind, string in enumerate(statement_in_dds):
+        statement_in_dds[ind] = string.split(';')[0]
+        try:
+            statement_check.append(string.split(';')[1].strip().replace(' ', ''))
+        except:
+            statement_check.append(string)
 
-        for ind in range(len(payment_date)):
-            payment_date[ind] = payment_date[ind].strip()
-            payment_date[ind] = payment_date[ind][:6] + payment_date[ind][-2:]
+    for ind in range(len(payment_date)):
+        payment_date[ind] = payment_date[ind].strip()
+        payment_date[ind] = payment_date[ind][:6] + payment_date[ind][-2:]
 
-        amount_to_pay = [s.replace(' ', '') for s in amount_to_pay]
-        amount_to_pay = np.asarray(amount_to_pay).astype(float)
-        # for ind, j in enumerate(provider_name):
-        #     print(ind, j)
-        # print(len(provider_name), len(provider_bin_iin), len(reestr_title), reestr_title, len(statement_in_dds), len(payment_currency), len(amount_to_pay), len(payment_date), len(statement_in_dds))
-        df3 = pd.DataFrame({
-            'Поставщик': provider_name,
-            'БИН / ИИН получателя': provider_bin_iin,
-            'Реестр': reestr_title,
-            'Статья в ДДС': statement_in_dds,
-            'Валюта платежа': payment_currency,
-            'Сумма к оплате': amount_to_pay,
-            'Сумма к оплате KZT': amount_to_pay,
-            'Курс': 1,
-            'Дата оплаты': payment_date,
-            'Skip': '',
-            'Проверка статьи': statement_check,
-            'Название статьи': ''
-        })
-        hold_session()
-        # logger.info(f'DF Length: {len(df3)}')
-        return df3
+    amount_to_pay = [s.replace(' ', '') for s in amount_to_pay]
+    amount_to_pay = np.asarray(amount_to_pay).astype(float)
+    # for ind, j in enumerate(provider_name):
+    #     print(ind, j)
+    # print(len(provider_name), len(provider_bin_iin), len(reestr_title), reestr_title, len(statement_in_dds), len(payment_currency), len(amount_to_pay), len(payment_date), len(statement_in_dds))
+    df3 = pd.DataFrame({
+        'Поставщик': provider_name,
+        'БИН / ИИН получателя': provider_bin_iin,
+        'Реестр': reestr_title,
+        'Статья в ДДС': statement_in_dds,
+        'Валюта платежа': payment_currency,
+        'Сумма к оплате': amount_to_pay,
+        'Сумма к оплате KZT': amount_to_pay,
+        'Курс': 1,
+        'Дата оплаты': payment_date,
+        'Skip': '',
+        'Проверка статьи': statement_check,
+        'Название статьи': ''
+    })
+    hold_session()
+    # logger.info(f'DF Length: {len(df3)}')
+    return df3
 
     # except:
     #     send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА3')
 
 
 def fact_oplat_to_reestr(filename, yesterdays_reestr_date):
+    print('STARTED FACT OPLAT')
+    print(filename, yesterdays_reestr_date)
     # print('Started fact oplat to reestr')
     hold_session()
-    df = pd.read_excel(os.path.join(download_path, filename))
+    df_ = pd.read_excel(os.path.join(download_path, filename))
+    print(df_)
     # print(os.path.join(download_path, filename))
-    df['Дата'] = pd.to_datetime(df['Дата'], format='%d.%m.%Y')
-    df['Дата'] = df['Дата'].dt.strftime('%d.%m.%y')
+    df_['Дата'] = pd.to_datetime(df_['Дата'], format='%d.%m.%Y')
+    df_['Дата'] = df_['Дата'].dt.strftime('%d.%m.%y')
 
     yesterdays_reestr_date = yesterdays_reestr_date[:6] + yesterdays_reestr_date[-2:]
-    df = df[(df['Оплата'] == 'Б/Н') & (df['Дата'] == yesterdays_reestr_date)]
+    df_ = df_[(df_['Оплата'] == 'Б/Н') & (df_['Дата'] == yesterdays_reestr_date)]
 
     try:
-        df['Сумма на оплату'] = df['Сумма на оплату'].apply(lambda x: x.replace(' ', ''))
+        df_['Сумма на оплату'] = df_['Сумма на оплату'].apply(lambda x: x.replace(' ', ''))
     except:
         ...
 
-    df['Сумма на оплату'] = df['Сумма на оплату'].astype(float)
+    df_['Сумма на оплату'] = df_['Сумма на оплату'].astype(float)
 
-    df1 = pd.DataFrame({'Поставщик': df['Наименование поставщика'], 'БИН / ИИН получателя': '', 'Реестр': '', 'Статья в ДДС': '', 'Валюта платежа': 'KZT',
-                        'Сумма к оплате': df['Сумма на оплату'], 'Сумма к оплате KZT': df['Сумма на оплату'], 'Курс': 1, 'Дата оплаты': df['Дата'], 'Skip': '', 'Проверка статьи': df['Наименование поставщика'], 'Название статьи': ''})
-
-    return df1
+    return pd.DataFrame({'Поставщик': df_['Наименование поставщика'], 'БИН / ИИН получателя': '', 'Реестр': '', 'Статья в ДДС': '', 'Валюта платежа': 'KZT',
+                        'Сумма к оплате': df_['Сумма на оплату'], 'Сумма к оплате KZT': df_['Сумма на оплату'], 'Курс': 1, 'Дата оплаты': df_['Дата'], 'Skip': '', 'Проверка статьи': df_['Наименование поставщика'], 'Название статьи': ''})
 
 
 def get_first_statement(weekends):
@@ -412,7 +421,7 @@ def get_first_statement(weekends):
 
                             if day in files and 'kzt народный' in files.lower():
                                 df2 = pd.read_excel(rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\{subfolders}\KZT народный за {day}.xls')
-
+                                print('#1', rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\{subfolders}\KZT народный за {day}.xls')
                                 if len(df1) != 0:
                                     df2 = df2.iloc[10:]
                                 if len(weekends) > 1:
@@ -422,6 +431,7 @@ def get_first_statement(weekends):
                     except:
                         if day in subfolders and 'kzt народный' in subfolders.lower():
                             df2 = pd.read_excel(rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\KZT народный за {day}.xls')
+                            print('#2', rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\KZT народный за {day}.xls')
                             if len(df1) != 0:
                                 df2 = df2.iloc[10:]
                             if len(weekends) > 1:
@@ -853,8 +863,10 @@ def make_analysis_and_calculations(yesterday):
         sheet.range(f'L1:O{ind1 + 1}').api.VerticalAlignment = VAlign.xlVAlignCenter
         sheet.range(f'L1:O{ind1 + 1}').api.HorizontalAlignment = HAlign.xlHAlignCenter
 
-        book.save(f'{save_xlsx_path}\\Сверка {yesterday}.xlsx')
-        book.save(f'{save_xlsx_path_qlik}\\Сверка {yesterday}.xlsx')
+        book.save(f'{save_xlsx_path}\\Сверка {yesterday}_1.xlsx')
+        # ? ----------------------------------------------------------------------
+        # ? UNCOMMENT
+        # book.save(f'{save_xlsx_path_qlik}\\Сверка {yesterday}.xlsx')
         try:
             book.close()
             app.quit()
@@ -888,80 +900,84 @@ if __name__ == '__main__':
     # yesterday1 = '04.08.23'
     # yesterday2 = '04.08.2023'
 
-    calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
+    for day in os.listdir(r'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ'):
+        if os.path.isfile(fr'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ\{day}'):
+            print(day.replace('Сверка ', '').replace('.xlsx', ''))
 
-    cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
-    cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
+        calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
-    if cur_day_type != 'Holiday':
-        logger = logging.getLogger(logger_name)
-        # print('Started current date: ', yesterday2)
-        weekends = []
-        weekends_type = []
+        cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
+        cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
 
-        for i in range(cur_day_index - 1, 0, -1):
-            weekends.append(calendar['Day'].iloc[i][:6] + '20' + calendar['Day'].iloc[i][-2:])
-            weekends_type.append(calendar['Type'].iloc[i])
-            if calendar['Type'].iloc[i] == 'Working':
-                yesterday1 = calendar['Day'].iloc[i]
-                break
+        if cur_day_type != 'Holiday':
+            logger = logging.getLogger(logger_name)
+            # print('Started current date: ', yesterday2)
+            weekends = []
+            weekends_type = []
 
-        # print(yesterday1)
-        # print(weekends)
+            for i in range(cur_day_index - 1, 0, -1):
+                weekends.append(calendar['Day'].iloc[i][:6] + '20' + calendar['Day'].iloc[i][-2:])
+                weekends_type.append(calendar['Type'].iloc[i])
+                if calendar['Type'].iloc[i] == 'Working':
+                    yesterday1 = calendar['Day'].iloc[i]
+                    break
 
-        df = get_first_statement(weekends)
+            # print(yesterday1)
+            # print(weekends)
 
-        book = load_workbook(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx')
+            df = get_first_statement(weekends)
 
-        book.active = book['Halyk']
-        sheet = book.active
+            book = load_workbook(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx')
 
-        rows = df.to_numpy().tolist()
+            book.active = book['Halyk']
+            sheet = book.active
 
-        for r_idx, row in enumerate(rows, 2):
-            for c_idx, value in enumerate(row, 1):
-                sheet.cell(row=r_idx, column=c_idx, value=value)
+            rows = df.to_numpy().tolist()
 
-        book.save(f'{working_path}\\Temp1.xlsx')
+            for r_idx, row in enumerate(rows, 2):
+                for c_idx, value in enumerate(row, 1):
+                    sheet.cell(row=r_idx, column=c_idx, value=value)
 
-        df3 = pd.DataFrame()
+            book.save(f'{working_path}\\Temp1.xlsx')
 
-        for ind, yesterday in enumerate(weekends):
-            # # 1 --------------------------------------------------------------------------
+            df3 = pd.DataFrame()
 
-            web1 = search_by_date(yesterday)
+            for ind, yesterday in enumerate(weekends):
+                # # 1 --------------------------------------------------------------------------
 
-            # # 2 --------------------------------------------------------------------------
+                web1 = search_by_date(yesterday)
 
-            df2, yesterdays_reestr_date = documentolog(web1, yesterday)
+                # # 2 --------------------------------------------------------------------------
 
-            # # 3 --------------------------------------------------------------------------
+                df2, yesterdays_reestr_date = documentolog(web1, yesterday)
 
-            if weekends_type[ind] != 'Holiday' and df2 is not None and yesterdays_reestr_date is not None:
+                # # 3 --------------------------------------------------------------------------
 
-                df1 = odines(yesterday)
+                if weekends_type[ind] != 'Holiday' and df2 is not None and yesterdays_reestr_date is not None:
 
-                df2 = pd.concat([df2, df1])
+                    df1 = odines(yesterday)
 
-            df3 = pd.concat([df3, df2])
+                    df2 = pd.concat([df2, df1])
 
-        # # 4 ---------------------------------------------------------------------------------------
+                df3 = pd.concat([df3, df2])
 
-        design_number_fmt_and_date(df3, yesterday1)
+            # # 4 ---------------------------------------------------------------------------------------
 
-        # # 5 ---------------------------------------------------------------------------------------
+            design_number_fmt_and_date(df3, yesterday1)
 
-        fill_empty_bins()
+            # # 5 ---------------------------------------------------------------------------------------
 
-        # # 6 ---------------------------------------------------------------------------------------
+            fill_empty_bins()
 
-        len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
+            # # 6 ---------------------------------------------------------------------------------------
+
+            len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
 
         # # FINISHED LOGIC --------------------------------------------------------------------------
 
-        tools.send_message_to_tg(tg_token, chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
-
-        send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
+        # tools.send_message_to_tg(tg_token, chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
+        #
+        # send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
 
     else:
         print(1)
