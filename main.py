@@ -901,9 +901,9 @@ if __name__ == '__main__':
     # yesterday2 = '04.08.2023'
 
     search_path = None
-
+    machine_ip = '10.70.2.2'
     if str(machine_ip) == '10.70.2.2':
-        search_path = r'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ\июль 2023'
+        search_path = r'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ'
     elif str(machine_ip) == '10.70.2.9':
         search_path = r'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ'
 
@@ -916,7 +916,12 @@ if __name__ == '__main__':
         if os.path.isfile(os.path.join(search_path, day)):
 
             print(day.replace('Сверка ', '').replace('.xlsx', ''))
-            send_message_to_tg(tg_token, chat_id, f"Started day {day.replace('Сверка ', '').replace('.xlsx', '')} on {machine_ip}")
+            # continue
+            day_ = day.replace('Сверка ', '').replace('.xlsx', '')
+            yesterday1 = f"{day_.split('.')[0]}.{day_.split('.')[1]}.23"
+            yesterday2 = day.replace('Сверка ', '').replace('.xlsx', '')
+            print(yesterday1, yesterday2)
+            # send_message_to_tg(tg_token, chat_id, f"Started day {day.replace('Сверка ', '').replace('.xlsx', '')} on {machine_ip}")
 
             calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
