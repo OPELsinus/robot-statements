@@ -385,6 +385,7 @@ def fact_oplat_to_reestr(filename, yesterdays_reestr_date):
     print(filename, yesterdays_reestr_date)
     # print('Started fact oplat to reestr')
     hold_session()
+    time.sleep(3)
     df_ = pd.read_excel(os.path.join(download_path, filename))
     print(df_)
     # print(os.path.join(download_path, filename))
@@ -863,10 +864,9 @@ def make_analysis_and_calculations(yesterday):
         sheet.range(f'L1:O{ind1 + 1}').api.VerticalAlignment = VAlign.xlVAlignCenter
         sheet.range(f'L1:O{ind1 + 1}').api.HorizontalAlignment = HAlign.xlHAlignCenter
 
-        book.save(f'{save_xlsx_path}\\Сверка {yesterday}_1.xlsx')
-        # ? ----------------------------------------------------------------------
-        # ? UNCOMMENT
-        # book.save(f'{save_xlsx_path_qlik}\\Сверка {yesterday}.xlsx')
+        book.save(f'{save_xlsx_path}\\Сверка {yesterday}.xlsx')
+        book.save(f'{save_xlsx_path_qlik}\\Сверка {yesterday}.xlsx')
+
         try:
             book.close()
             app.quit()
@@ -900,103 +900,77 @@ if __name__ == '__main__':
     # yesterday1 = '04.08.23'
     # yesterday2 = '04.08.2023'
 
-    search_path = None
-    machine_ip = '10.70.2.2'
-    if str(machine_ip) == '10.70.2.2':
-        search_path = r'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ'
-    elif str(machine_ip) == '10.70.2.9':
-        search_path = r'\\vault.magnum.local\Common\Stuff\_05_Финансовый Департамент\01. Казначейство\Сверка\Сверка РОБОТ'
+    calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
-    print(search_path)
+    cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
+    cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
 
-    send_message_to_tg(tg_token, chat_id, f'Started on {machine_ip}')
+    if cur_day_type != 'Holiday':
+        logger = logging.getLogger(logger_name)
+        # print('Started current date: ', yesterday2)
+        weekends = []
+        weekends_type = []
 
-    for day in os.listdir(search_path):
-        print(os.path.join(search_path, day))
-        if os.path.isfile(os.path.join(search_path, day)):
+        for i in range(cur_day_index - 1, 0, -1):
+            weekends.append(calendar['Day'].iloc[i][:6] + '20' + calendar['Day'].iloc[i][-2:])
+            weekends_type.append(calendar['Type'].iloc[i])
+            if calendar['Type'].iloc[i] == 'Working':
+                yesterday1 = calendar['Day'].iloc[i]
+                break
 
-            print(day.replace('Сверка ', '').replace('.xlsx', ''))
-            # continue
-            day_ = day.replace('Сверка ', '').replace('.xlsx', '')
-            yesterday1 = f"{day_.split('.')[0]}.{day_.split('.')[1]}.23"
-            yesterday2 = day.replace('Сверка ', '').replace('.xlsx', '')
-            print(yesterday1, yesterday2)
-            # send_message_to_tg(tg_token, chat_id, f"Started day {day.replace('Сверка ', '').replace('.xlsx', '')} on {machine_ip}")
+        df = get_first_statement(weekends)
 
-            calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
+        book = load_workbook(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx')
 
-            cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
-            cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
+        book.active = book['Halyk']
+        sheet = book.active
 
-            if cur_day_type != 'Holiday':
-                logger = logging.getLogger(logger_name)
-                # print('Started current date: ', yesterday2)
-                weekends = []
-                weekends_type = []
+        rows = df.to_numpy().tolist()
 
-                for i in range(cur_day_index - 1, 0, -1):
-                    weekends.append(calendar['Day'].iloc[i][:6] + '20' + calendar['Day'].iloc[i][-2:])
-                    weekends_type.append(calendar['Type'].iloc[i])
-                    if calendar['Type'].iloc[i] == 'Working':
-                        yesterday1 = calendar['Day'].iloc[i]
-                        break
+        for r_idx, row in enumerate(rows, 2):
+            for c_idx, value in enumerate(row, 1):
+                sheet.cell(row=r_idx, column=c_idx, value=value)
 
-                # print(yesterday1)
-                # print(weekends)
+        book.save(f'{working_path}\\Temp1.xlsx')
 
-                df = get_first_statement(weekends)
+        df3 = pd.DataFrame()
 
-                book = load_workbook(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx')
+        for ind, yesterday in enumerate(weekends):
+            # # 1 --------------------------------------------------------------------------
 
-                book.active = book['Halyk']
-                sheet = book.active
+            web1 = search_by_date(yesterday)
 
-                rows = df.to_numpy().tolist()
+            # # 2 --------------------------------------------------------------------------
 
-                for r_idx, row in enumerate(rows, 2):
-                    for c_idx, value in enumerate(row, 1):
-                        sheet.cell(row=r_idx, column=c_idx, value=value)
+            df2, yesterdays_reestr_date = documentolog(web1, yesterday)
 
-                book.save(f'{working_path}\\Temp1.xlsx')
+            # # 3 --------------------------------------------------------------------------
 
-                df3 = pd.DataFrame()
+            if weekends_type[ind] != 'Holiday' and df2 is not None and yesterdays_reestr_date is not None:
 
-                for ind, yesterday in enumerate(weekends):
-                    # # 1 --------------------------------------------------------------------------
+                df1 = odines(yesterday)
 
-                    web1 = search_by_date(yesterday)
+                df2 = pd.concat([df2, df1])
 
-                    # # 2 --------------------------------------------------------------------------
+            df3 = pd.concat([df3, df2])
 
-                    df2, yesterdays_reestr_date = documentolog(web1, yesterday)
+        # # 4 ---------------------------------------------------------------------------------------
 
-                    # # 3 --------------------------------------------------------------------------
+        design_number_fmt_and_date(df3, yesterday1)
 
-                    if weekends_type[ind] != 'Holiday' and df2 is not None and yesterdays_reestr_date is not None:
+        # # 5 ---------------------------------------------------------------------------------------
 
-                        df1 = odines(yesterday)
+        fill_empty_bins()
 
-                        df2 = pd.concat([df2, df1])
+        # # 6 ---------------------------------------------------------------------------------------
 
-                    df3 = pd.concat([df3, df2])
-
-                # # 4 ---------------------------------------------------------------------------------------
-
-                design_number_fmt_and_date(df3, yesterday1)
-
-                # # 5 ---------------------------------------------------------------------------------------
-
-                fill_empty_bins()
-
-                # # 6 ---------------------------------------------------------------------------------------
-
-                len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
+        len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
 
         # # FINISHED LOGIC --------------------------------------------------------------------------
 
-        # tools.send_message_to_tg(tg_token, chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
-        #
-        # send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
+        tools.send_message_to_tg(tg_token, chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
+
+        send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
 
     else:
         print(1)
