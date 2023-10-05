@@ -65,7 +65,6 @@ class Registry(Web):
         return self
 
 
-
 def search_by_date(yest):
     # print('Started searching by date')
     # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Начат фильтр по дате')
@@ -78,11 +77,11 @@ def search_by_date(yest):
     time.sleep(0.2)
 
     # Кнопка "Документы -> Финансовые"
-    web.find_element('//*[@id="header_menu"]/li[7]/div/ul/li[9]/a').click()
+    web.find_element('//a[contains(text(), "Финансовые")]').click()
     time.sleep(0.1)
 
     # Кнопка "Документы -> Финансовые -> Реестр на оплату"
-    web.find_element('//*[@id="header_menu"]/li[7]/div/ul/li[9]/div/ul/li[9]/a').click()
+    web.find_element('//a[contains(text(), "Реестр на оплату")]').click()
 
     web.load()
 
@@ -505,8 +504,13 @@ def odines(yesterdays_reestr_date):
                               "enabled_only": True, "found_index": 1}).type_keys(yesterdays_reestr_date, app.keys.TAB)
 
             app.find_element({"title": "Выбрать", "class_name": "", "control_type": "Button",
-                              "visible_only": True, "enabled_only": True, "found_index": 0}).click()
+                              "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=15).click()
 
+            if not app.wait_element({"title_re": ".*Дата", "class_name": "", "control_type": "Custom", "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=15):
+                app.quit()
+                return pd.DataFrame()
+
+            print('found')
             keyboard.press_and_release('ctrl+a')
 
             time.sleep(.2)
@@ -895,83 +899,87 @@ if __name__ == '__main__':
     update_credentials(save_xlsx_path, owa_username, owa_password)
     update_credentials(save_xlsx_path_qlik, owa_username, owa_password)
 
-    yesterday1 = datetime.date.today().strftime('%d.%m.%y')
-    yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
-    # yesterday1 = '04.08.23'
-    # yesterday2 = '04.08.2023'
+    for day in ['03']:
 
-    calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
+        yesterday1 = datetime.date.today().strftime('%d.%m.%y')
+        yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
 
-    cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
-    cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
+        # yesterday1 = f'{day}.10.23'
+        # yesterday2 = f'{day}.10.2023'
 
-    if cur_day_type != 'Holiday':
-        logger = logging.getLogger(logger_name)
-        # print('Started current date: ', yesterday2)
-        weekends = []
-        weekends_type = []
+        calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
-        for i in range(cur_day_index - 1, 0, -1):
-            weekends.append(calendar['Day'].iloc[i][:6] + '20' + calendar['Day'].iloc[i][-2:])
-            weekends_type.append(calendar['Type'].iloc[i])
-            if calendar['Type'].iloc[i] == 'Working':
-                yesterday1 = calendar['Day'].iloc[i]
-                break
+        cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
+        cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
 
-        df = get_first_statement(weekends)
+        if cur_day_type != 'Holiday':
+            logger = logging.getLogger(logger_name)
+            # print('Started current date: ', yesterday2)
+            weekends = []
+            weekends_type = []
 
-        book = load_workbook(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx')
+            for i in range(cur_day_index - 1, 0, -1):
+                weekends.append(calendar['Day'].iloc[i][:6] + '20' + calendar['Day'].iloc[i][-2:])
+                weekends_type.append(calendar['Type'].iloc[i])
+                if calendar['Type'].iloc[i] == 'Working':
+                    yesterday1 = calendar['Day'].iloc[i]
+                    break
 
-        book.active = book['Halyk']
-        sheet = book.active
+            df = get_first_statement(weekends)
 
-        rows = df.to_numpy().tolist()
+            book = load_workbook(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx')
 
-        for r_idx, row in enumerate(rows, 2):
-            for c_idx, value in enumerate(row, 1):
-                sheet.cell(row=r_idx, column=c_idx, value=value)
+            book.active = book['Halyk']
+            sheet = book.active
 
-        book.save(f'{working_path}\\Temp1.xlsx')
+            rows = df.to_numpy().tolist()
 
-        df3 = pd.DataFrame()
+            for r_idx, row in enumerate(rows, 2):
+                for c_idx, value in enumerate(row, 1):
+                    sheet.cell(row=r_idx, column=c_idx, value=value)
 
-        for ind, yesterday in enumerate(weekends):
-            # # 1 --------------------------------------------------------------------------
+            book.save(f'{working_path}\\Temp1.xlsx')
 
-            web1 = search_by_date(yesterday)
+            df3 = pd.DataFrame()
 
-            # # 2 --------------------------------------------------------------------------
+            for ind, yesterday in enumerate(weekends):
+                # # 1 --------------------------------------------------------------------------
+                print('yes:', yesterday)
+                web1 = search_by_date(yesterday)
 
-            df2, yesterdays_reestr_date = documentolog(web1, yesterday)
+                # # 2 --------------------------------------------------------------------------
 
-            # # 3 --------------------------------------------------------------------------
+                df2, yesterdays_reestr_date = documentolog(web1, yesterday)
 
-            if weekends_type[ind] != 'Holiday' and df2 is not None and yesterdays_reestr_date is not None:
+                # # 3 --------------------------------------------------------------------------
 
-                df1 = odines(yesterday)
+                if weekends_type[ind] != 'Holiday' and df2 is not None and yesterdays_reestr_date is not None:
 
-                df2 = pd.concat([df2, df1])
+                    df1 = odines(yesterday)
 
-            df3 = pd.concat([df3, df2])
+                    df2 = pd.concat([df2, df1])
 
-        # # 4 ---------------------------------------------------------------------------------------
+                df3 = pd.concat([df3, df2])
 
-        design_number_fmt_and_date(df3, yesterday1)
+            # # 4 ---------------------------------------------------------------------------------------
 
-        # # 5 ---------------------------------------------------------------------------------------
+            design_number_fmt_and_date(df3, yesterday1)
 
-        fill_empty_bins()
+            # # 5 ---------------------------------------------------------------------------------------
 
-        # # 6 ---------------------------------------------------------------------------------------
+            fill_empty_bins()
 
-        len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
+            # # 6 ---------------------------------------------------------------------------------------
 
-        # # FINISHED LOGIC --------------------------------------------------------------------------
+            len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
 
-        tools.send_message_to_tg(tg_token, chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
+            # # FINISHED LOGIC --------------------------------------------------------------------------
 
-        send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
+            tools.send_message_to_tg(tg_token, chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
 
-    else:
-        print(1)
+            send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
+
+        else:
+            print(1)
+
 
