@@ -9,7 +9,7 @@ from pyautogui import moveTo
 from pywinauto.timings import wait_until_passes
 
 from config import process_list_path, odines_username_rpa, odines_password_rpa, \
-    logger_name, odines_username, odines_password
+    logger_name, odines_username, odines_password, machine_ip
 from rpamini import App, try_except_decorator
 from tools import hold_session
 
@@ -17,7 +17,10 @@ from tools import hold_session
 class Odines(App):
 
     def __init__(self, timeout=60):
-        super(Odines, self).__init__(Path(r'C:\Program Files\1cv8\common\1cestart.exe'), timeout=timeout,
+
+        path = r'C:\Program Files\1cv8\8.3.13.1644\bin\1cv8.exe' if machine_ip == '172.20.1.24' else r'C:\Program Files\1cv8\common\1cestart.exe'
+
+        super(Odines, self).__init__(Path(path), timeout=timeout,
                                      process_registry=process_list_path, logger=logger_name)
         self.fuckn_tooltip = {"class_name": "V8ConfirmationWindow", "control_type": "ToolTip", "visible_only": True,
                               "enabled_only": True, "found_index": 0}

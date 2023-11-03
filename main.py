@@ -3,6 +3,8 @@ import logging
 import os
 import re
 import time
+import shutil
+from contextlib import suppress
 from pathlib import Path
 
 import keyboard
@@ -19,7 +21,7 @@ from core import Odines
 
 import tools
 from tools import hold_session, send_message_by_smtp, send_message_to_orc, update_credentials, send_message_to_tg
-from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name, save_xlsx_path_qlik, tg_token, machine_ip
+from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name, save_xlsx_path_qlik, tg_token, machine_ip, halyk_extract_path
 from rpamini import Web
 
 cols = ['N', 'Согласован', 'Дата выписки', 'Дата планируемой оплаты', 'Заявка на оплату',
@@ -413,15 +415,19 @@ def get_first_statement(weekends):
     for ind, day in enumerate(weekends[::-1]):
         month = int(day.split('.')[1])
 
-        for folder in os.listdir(r'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г'):
+        for folder in os.listdir(halyk_extract_path):
             if str(month) in folder and MONTHS[month - 1] in folder:
-                for subfolders in os.listdir(rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}'):
-                    try:
-                        for files in os.listdir(rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\{subfolders}'):
+                for subfolders in os.listdir(os.path.join(halyk_extract_path, folder)):
 
-                            if day in files and 'kzt народный' in files.lower():
-                                df2 = pd.read_excel(rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\{subfolders}\KZT народный за {day}.xls')
-                                print('#1', rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\{subfolders}\KZT народный за {day}.xls')
+                    subfolder = os.path.join(os.path.join(halyk_extract_path, folder), subfolders)
+                    try:
+                        for files in os.listdir(subfolder):
+
+                            file = os.path.join(os.path.join(os.path.join(halyk_extract_path, folder), subfolders), files)
+
+                            if day in files and 'kzt народный' in files.lower() and os.path.getsize(file) / 1024 > 100:
+                                df2 = pd.read_excel(file)
+                                print('#1', file)
                                 if len(df1) != 0:
                                     df2 = df2.iloc[10:]
                                 if len(weekends) > 1:
@@ -429,9 +435,9 @@ def get_first_statement(weekends):
                                 df1 = pd.concat([df1, df2])
                                 break
                     except:
-                        if day in subfolders and 'kzt народный' in subfolders.lower():
-                            df2 = pd.read_excel(rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\KZT народный за {day}.xls')
-                            print('#2', rf'\\vault.magnum.local\Common\Stuff\_06_Бухгалтерия\Выписки\Выписки за 2023г\{folder}\KZT народный за {day}.xls')
+                        if day in subfolders and 'kzt народный' in subfolders.lower() and os.path.getsize(subfolder) / 1024 > 100:
+                            df2 = pd.read_excel(subfolder)
+                            print('#2', subfolder)
                             if len(df1) != 0:
                                 df2 = df2.iloc[10:]
                             if len(weekends) > 1:
@@ -445,13 +451,15 @@ def get_first_statement(weekends):
         df1.columns = df1.iloc[7]
 
         if len(weekends) > 1:
-            df1 = df1[df1['Дебет'].notna()].iloc[1:]
+            df1 = df1[(df1['Дебет'].notna()) | (df1['Кредит'].notna())].iloc[1:]
         else:
-            df1 = df1[df1['Дебет'].notna()].iloc[1:-1]
+            df1 = df1[(df1['Дебет'].notna()) | (df1['Кредит'].notna())].iloc[1:-1]
 
         try:
             df1['Дебет'] = df1['Дебет'].apply(lambda x: x.replace(' ', ''))
             df1['Дебет'] = df1['Дебет'].astype(float)
+            df1['Кредит'] = df1['Кредит'].apply(lambda x: x.replace(' ', ''))
+            df1['Кредит'] = df1['Кредит'].astype(float)
         except:
             ...
 
@@ -459,7 +467,7 @@ def get_first_statement(weekends):
         df1['Дата валютирования'] = df1['Дата валютирования'].dt.strftime('%d.%m.%y')
 
         # print(len(df1))
-        # df1.to_excel(r'C:\Users\Abdykarim.D\Desktop\lolus.xlsx')
+        # df1.to_excel('rffdgdlolus.xlsx')
 
         return df1
 
@@ -489,25 +497,31 @@ def odines(yesterdays_reestr_date):
 
     app.switch({"title": "Выберите период", "class_name": "V8NewLocalFrameBaseWnd", "control_type": "Window", "visible_only": True, "enabled_only": True, "found_index": 0})
 
-    yesterdays_reestr_date = yesterdays_reestr_date.replace('.', '')[:4] + yesterdays_reestr_date.replace('.', '')[-2:]
+    yesterdays_reestr_date_ = yesterdays_reestr_date.replace('.', '')[:4] + yesterdays_reestr_date.replace('.', '')[-2:]
 
     df = pd.DataFrame(columns=cols)
 
     for i in range(5):
 
-        try:
+        if True:
 
             app.find_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True,
-                              "enabled_only": True, "found_index": 0}).type_keys(yesterdays_reestr_date, app.keys.TAB)
+                              "enabled_only": True, "found_index": 0}).type_keys(yesterdays_reestr_date_, app.keys.TAB)
 
             app.find_element({"title": "", "class_name": "", "control_type": "Edit", "visible_only": True,
-                              "enabled_only": True, "found_index": 1}).type_keys(yesterdays_reestr_date, app.keys.TAB)
+                              "enabled_only": True, "found_index": 1}).type_keys(yesterdays_reestr_date_, app.keys.TAB)
 
             app.find_element({"title": "Выбрать", "class_name": "", "control_type": "Button",
                               "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=15).click()
 
+            app.switch({"title": "", "class_name": "", "control_type": "Pane", "visible_only": True, "enabled_only": True, "found_index": 29})
+
             if not app.wait_element({"title_re": ".*Дата", "class_name": "", "control_type": "Custom", "visible_only": True, "enabled_only": True, "found_index": 0}, timeout=15):
+
+                print('quitting')
+                # time.sleep(1000)
                 app.quit()
+
                 return pd.DataFrame()
 
             print('found')
@@ -575,8 +589,8 @@ def odines(yesterdays_reestr_date):
 
             break
 
-        except:
-            pass
+        # except:
+        #     pass
     # При копировании из 1С столбец Согласован пропадает и столбцы дат (не вычислил почему только они) смещаются на 1 вправо!!!
     df['Дата выписки'] = df['Дата выписки'].apply(lambda x: x.rstrip('.1'))
     df['Дата выписки'] = df['Дата выписки'].apply(lambda x: x[:6] + x[-2:])
@@ -654,10 +668,11 @@ def make_analysis_and_calculations(yesterday):
     if True:  # Temp2323
         book = load_workbook(f'{working_path}\\Temp1.xlsx')
 
-        contragent_name_halyk = []
-        payment_amount_halyk = []
-        payment_purpose_halyk = []
-        bin_halyk = []
+        ids = []
+        # contragent_name_halyk = []
+        # payment_amount_halyk = []
+        # payment_purpose_halyk = []
+        # bin_halyk = []
 
         max_rows_halyk = 0
 
@@ -665,18 +680,22 @@ def make_analysis_and_calculations(yesterday):
 
         for i in range(2, sheet.max_row):
 
-            if sheet[f'E{str(i)}'].value is None:
+            if sheet[f'E{str(i)}'].value is None or sheet[f'E{str(i)}'].value == '':
                 max_rows_halyk = i
                 break
 
-            contragent_name_halyk.append(sheet[f'E{str(i)}'].value)
-            payment_amount_halyk.append(float(sheet[f'H{str(i)}'].value))
-            payment_purpose_halyk.append(str(sheet[f'J{str(i)}'].value))
-            bin_halyk.append(sheet[f'F{str(i)}'].value)
-
+            if sheet[f'H{str(i)}'].value is not None:
+                ids.append(i)
+                # contragent_name_halyk.append(sheet[f'E{str(i)}'].value)
+                # payment_amount_halyk.append(float(sheet[f'H{str(i)}'].value))
+                # payment_purpose_halyk.append(str(sheet[f'J{str(i)}'].value))
+                # bin_halyk.append(sheet[f'F{str(i)}'].value)
+        # for _ in ids:
+        #     print(_)
         matches = []
 
         sheet = book['Реестры']
+        sheet_halyk = book['Halyk']
 
         hold_session()
         for i in range(19, sheet.max_row):
@@ -696,12 +715,12 @@ def make_analysis_and_calculations(yesterday):
 
             sheet[f'Q{i}'].value = 'Не идёт'
 
-            for ind in range(len(contragent_name_halyk)):
+            for ind in ids:
 
                 try:
-                    bin_halyk[ind] = str(bin_halyk[ind])
-                    bin_halyk[ind] = bin_halyk[ind].strip()
-                    bin_halyk[ind] = bin_halyk[ind].lstrip('0')
+                    bin_halyk = str(sheet_halyk[f'F{ind}'].value)
+                    bin_halyk = bin_halyk.strip()
+                    bin_halyk = bin_halyk.lstrip('0')
                 except:
                     ...
                 try:
@@ -714,52 +733,47 @@ def make_analysis_and_calculations(yesterday):
                     payment_amount_reestr = round(payment_amount_reestr, 3)
                 except:
                     ...
-                payment_amount_halyk[ind] = round(payment_amount_halyk[ind], 3)
+                payment_amount_halyk = round(float(sheet_halyk[f'H{ind}'].value), 3)
 
-                # if contragent_name_reestr == 'DANONE BERKUT ТОО (1836)' and contragent_name_halyk[ind] == 'DANONE BERKUT ТОО':
-                #     print(bin_halyk[ind], reestr_bin, payment_amount_halyk[ind], payment_amount_reestr, contragent_name_halyk[ind], contragent_name_reestr)
-                #     print(type(bin_halyk[ind]), type(reestr_bin), type(payment_amount_halyk[ind]), type(payment_amount_reestr))
-                #     print(round(payment_amount_halyk[ind], 3), round(payment_amount_reestr, 3))
-                #     print('------------------------------------------')
-                # if payment_amount_reestr == 160200 or payment_amount_reestr == '160200':
-                #     print(payment_amount_halyk[ind], payment_amount_reestr, contragent_name_reestr, contragent_name_halyk[ind])
+                contragent_name_halyk = sheet_halyk[f'E{ind}'].value
+                payment_purpose_halyk = str(sheet_halyk[f'J{ind}'].value)
 
-                if 'комиссия' in payment_purpose_halyk[ind].lower():
+                if 'комиссия' in payment_purpose_halyk.lower():
                     matches.append(ind)
                     continue
 
                 # 2 пункт
-                if ('покупка' in payment_purpose_halyk[ind].lower() and 'валют' in payment_purpose_halyk[ind].lower()) and currency in ['USD', 'EUR', 'RUB'] and contragent_name_halyk[ind] == contragent_name_reestr and payment_amount_halyk[ind] == payment_amount_reestr:
+                if ('покупка' in payment_purpose_halyk.lower() and 'валют' in payment_purpose_halyk.lower()) and currency in ['USD', 'EUR', 'RUB'] and contragent_name_halyk == contragent_name_reestr and payment_amount_halyk == payment_amount_reestr:
                     sheet[f'Q{str(i)}'].value = 'Да'
                     matches.append(ind)
                     continue
 
-                elif contragent_name_halyk[ind] == contragent_name_reestr and payment_amount_halyk[ind] == payment_amount_reestr:
+                elif contragent_name_halyk == contragent_name_reestr and payment_amount_halyk == payment_amount_reestr:
                     sheet[f'Q{str(i)}'].value = 'Да'
                     matches.append(ind)
                     continue
 
                 # 3.1
-                elif ('ао' in contragent_name_halyk[ind].lower() and 'народный' in contragent_name_halyk[ind].lower() and 'банк' in contragent_name_halyk[ind].lower() and 'казахстана' in contragent_name_halyk[ind].lower()) and \
-                        contragent_name_reestr.lower() == 'сотрудники' and payment_amount_halyk[ind] == payment_amount_reestr:
+                elif ('ао' in contragent_name_halyk.lower() and 'народный' in contragent_name_halyk.lower() and 'банк' in contragent_name_halyk.lower() and 'казахстана' in contragent_name_halyk.lower()) and \
+                        contragent_name_reestr.lower() == 'сотрудники' and payment_amount_halyk == payment_amount_reestr:
                     sheet[f'Q{str(i)}'].value = 'Да'
                     # print('---', payment_amount_reestr, payment_amount_halyk[ind])
                     matches.append(ind)
                     continue
 
-                if ('погашение со счета' in payment_purpose_halyk[ind].lower() or 'проценты по кредиту' in payment_purpose_halyk[ind].lower() or 'выдача размена' in payment_purpose_halyk[ind].lower() or 'для зачисления на картсчета сотрудникам' in payment_purpose_halyk[ind].lower())\
-                        and payment_amount_halyk[ind] == payment_amount_reestr and (bin_halyk[ind] == reestr_bin or contragent_name_halyk[ind] == contragent_name_reestr):
+                if ('погашение со счета' in payment_purpose_halyk.lower() or 'проценты по кредиту' in payment_purpose_halyk.lower() or 'выдача размена' in payment_purpose_halyk.lower() or 'для зачисления на картсчета сотрудникам' in payment_purpose_halyk.lower())\
+                        and payment_amount_halyk == payment_amount_reestr and (bin_halyk == reestr_bin or contragent_name_halyk == contragent_name_reestr):
                     matches.append(ind)
                     continue
 
                 # 4
-                elif (bin_halyk[ind] == reestr_bin) and payment_amount_halyk[ind] == payment_amount_reestr:
+                elif (bin_halyk == reestr_bin) and payment_amount_halyk == payment_amount_reestr:
                     sheet[f'Q{str(i)}'].value = 'Да'
                     matches.append(ind)
                     continue
 
                 # ПРОВЕРКА НА СХОЖЕСТЬ СТРОК
-                elif contragent_name_halyk[ind] in contragent_name_reestr and payment_amount_halyk[ind] == payment_amount_reestr:
+                elif contragent_name_halyk in contragent_name_reestr and payment_amount_halyk == payment_amount_reestr:
                     sheet[f'Q{str(i)}'].value = 'Да'
                     matches.append(ind)
                     continue
@@ -767,7 +781,7 @@ def make_analysis_and_calculations(yesterday):
                 else:
                     match = 0
 
-                    for row1 in contragent_name_halyk[ind].split():
+                    for row1 in contragent_name_halyk.split():
                         for symbol in ",'!@#$%^&*()_+-=-./?|<>[]{}:;\"":
                             row1 = row1.replace(symbol, ' ')
 
@@ -778,8 +792,8 @@ def make_analysis_and_calculations(yesterday):
                             if row1.lower().strip() == row2.lower().strip():
                                 match += 1
 
-                    num = max(len(contragent_name_halyk[ind].split()), len(contragent_name_reestr.split()))
-                    if match * 100.0 / num >= 100 and payment_amount_halyk[ind] == payment_amount_reestr:
+                    num = max(len(contragent_name_halyk.split()), len(contragent_name_reestr.split()))
+                    if match * 100.0 / num >= 100 and payment_amount_halyk == payment_amount_reestr:
                         # print('СХОЖИ: ', contragent_name_halyk[ind], ' | ', contragent_name_reestr)
                         sheet[f'Q{str(i)}'].value = 'Да'
                         matches.append(ind)
@@ -809,12 +823,18 @@ def make_analysis_and_calculations(yesterday):
         not_matching = np.arange(2, max_rows_halyk)
         matches = np.unique(np.array(matches))
         # print(max_rows_halyk)
+        # for _ in matches:
+        #     print(_)
+        print(f'{yesterday2}\nHalyk - {max_rows_halyk}, mathces - {len(matches)}, halyks - {len(bin_halyk)}')
+        tools.send_message_to_tg(tg_token, chat_id, f'{yesterday2}\nHalyk - {max_rows_halyk}, mathces - {len(matches)}')
 
         for ind in not_matching:
-            sheet[f'O{ind + 2}'].value = str('Не идёт')
+            if sheet[f'H{ind}'].value is not None:
+                sheet[f'O{ind}'].value = str('Не идёт')
 
         for ind in matches:
-            sheet[f'O{ind + 2}'].value = str('Да')
+            # if sheet[f'H{ind + 2}'].value is not None:
+            sheet[f'O{ind}'].value = str('Да')
 
         for ind in range(2, sheet.max_row):
             if sheet[f'A{ind}'] is None and sheet[f'H{ind}'] is None:
@@ -868,8 +888,21 @@ def make_analysis_and_calculations(yesterday):
         sheet.range(f'L1:O{ind1 + 1}').api.VerticalAlignment = VAlign.xlVAlignCenter
         sheet.range(f'L1:O{ind1 + 1}').api.HorizontalAlignment = HAlign.xlHAlignCenter
 
-        book.save(f'{save_xlsx_path}\\Сверка {yesterday}.xlsx')
-        book.save(f'{save_xlsx_path_qlik}\\Сверка {yesterday}.xlsx')
+        folder = None
+        month = int(yesterday.split('.')[1]) - 1
+        year = yesterday.split('.')[2]
+
+        with suppress(Exception):
+            os.makedirs(os.path.join(save_xlsx_path, f'{MONTHS[month]} {year}'), exist_ok=True)
+            folder = os.path.join(save_xlsx_path, f'{MONTHS[month]} {year}')
+        print(folder)
+        for tries in range(5):
+            try:
+                book.save(f'{folder}\\Сверка {yesterday}.xlsx')
+                book.save(f'{save_xlsx_path_qlik}\\Сверка {yesterday}.xlsx')
+                break
+            except:
+                time.sleep(15)
 
         try:
             book.close()
@@ -899,13 +932,17 @@ if __name__ == '__main__':
     update_credentials(save_xlsx_path, owa_username, owa_password)
     update_credentials(save_xlsx_path_qlik, owa_username, owa_password)
 
-    for day in ['03']:
+    for day in range(1):
 
         yesterday1 = datetime.date.today().strftime('%d.%m.%y')
         yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
 
-        # yesterday1 = f'{day}.10.23'
-        # yesterday2 = f'{day}.10.2023'
+        # if day < 10:
+        #     yesterday2 = f'0{day}.11.2023'
+        #     yesterday1 = f'0{day}.11.23'
+        # else:
+        #     yesterday2 = f'{day}.11.2023'
+        #     yesterday1 = f'{day}.11.23'
 
         calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
@@ -931,7 +968,7 @@ if __name__ == '__main__':
 
             book.active = book['Halyk']
             sheet = book.active
-
+            book.save('loooolsl.xlsx')
             rows = df.to_numpy().tolist()
 
             for r_idx, row in enumerate(rows, 2):
@@ -948,10 +985,13 @@ if __name__ == '__main__':
                 web1 = search_by_date(yesterday)
 
                 # # 2 --------------------------------------------------------------------------
-
+                # df2 = pd.DataFrame()
+                # yesterdays_reestr_date = '30.10.2023'
                 df2, yesterdays_reestr_date = documentolog(web1, yesterday)
 
                 # # 3 --------------------------------------------------------------------------
+
+                isEmpty = False
 
                 if weekends_type[ind] != 'Holiday' and df2 is not None and yesterdays_reestr_date is not None:
 
@@ -959,17 +999,21 @@ if __name__ == '__main__':
 
                     df2 = pd.concat([df2, df1])
 
+                    if len(df1) == 0:
+                        isEmpty = True
+                        tools.send_message_to_tg(tg_token, chat_id, f'Реестры 1С - Пустые')
+
                 df3 = pd.concat([df3, df2])
 
-            # # 4 ---------------------------------------------------------------------------------------
+            # 4 ---------------------------------------------------------------------------------------
 
             design_number_fmt_and_date(df3, yesterday1)
 
-            # # 5 ---------------------------------------------------------------------------------------
+            # 5 ---------------------------------------------------------------------------------------
 
             fill_empty_bins()
 
-            # # 6 ---------------------------------------------------------------------------------------
+            # 6 ---------------------------------------------------------------------------------------
 
             len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
 
@@ -977,7 +1021,7 @@ if __name__ == '__main__':
 
             tools.send_message_to_tg(tg_token, chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
 
-            send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Mukhtarova@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
+            send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
 
         else:
             print(1)
