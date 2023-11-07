@@ -346,7 +346,7 @@ def get_data_from_reestr(web):
     for ind, string in enumerate(statement_in_dds):
         statement_in_dds[ind] = string.split(';')[0]
         try:
-            statement_check.append(string.split(';')[1].strip().replace(' ', ''))
+            statement_check.append(string.split(';')[1].strip())
         except:
             statement_check.append(string)
 
@@ -371,7 +371,7 @@ def get_data_from_reestr(web):
         'Дата оплаты': payment_date,
         'Skip': '',
         'Проверка статьи': statement_check,
-        'Название статьи': ''
+        'Название статьи': statement_in_dds
     })
     hold_session()
     # logger.info(f'DF Length: {len(df3)}')
@@ -932,17 +932,17 @@ if __name__ == '__main__':
     update_credentials(save_xlsx_path, owa_username, owa_password)
     update_credentials(save_xlsx_path_qlik, owa_username, owa_password)
 
-    for day in range(1):
+    for day in range(1, 8):
 
         yesterday1 = datetime.date.today().strftime('%d.%m.%y')
         yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
 
-        # if day < 10:
-        #     yesterday2 = f'0{day}.11.2023'
-        #     yesterday1 = f'0{day}.11.23'
-        # else:
-        #     yesterday2 = f'{day}.11.2023'
-        #     yesterday1 = f'{day}.11.23'
+        if day < 10:
+            yesterday2 = f'0{day}.11.2023'
+            yesterday1 = f'0{day}.11.23'
+        else:
+            yesterday2 = f'{day}.11.2023'
+            yesterday1 = f'{day}.11.23'
 
         calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
@@ -1021,7 +1021,7 @@ if __name__ == '__main__':
 
             tools.send_message_to_tg(tg_token, chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
 
-            send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
+            # send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
 
         else:
             print(1)
