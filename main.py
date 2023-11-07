@@ -186,6 +186,7 @@ def documentolog(web, yesterday):
                 yesterd_reestr_date = row[0]
 
             if len(yesterd_reestr_date) != 0 and row[0] == yesterd_reestr_date and 'Безналичный' in row and row_date == datetime.datetime.strptime(row[0], '%d.%m.%Y').date():
+
                 start_time = datetime.datetime.now().strftime('%H:%M:%S')
 
                 web.get(links[ind])
@@ -200,6 +201,7 @@ def documentolog(web, yesterday):
                 end_time = datetime.datetime.now().strftime('%H:%M:%S')
                 times.append([start_time, end_time])
                 # print(row, links[ind])
+
     logger.info(f'Went forward')
     # ----------------------------------------------------------------------------------
     # Выполнение кода до страницы 11 ТЗ
@@ -269,6 +271,10 @@ def get_data_from_reestr(web):
     # print('Started reestr')
 
     reestr_title = web.find_element('//*[@id="reference-view"]/table/tbody/tr[3]/td[2]').get_attr('text')
+
+    if 'таткрафт' in str(reestr_title).lower():
+        return pd.DataFrame()
+
     provider_name = []
     provider_bin_iin = []
     statement_in_dds = []
@@ -591,17 +597,31 @@ def odines(yesterdays_reestr_date):
 
         # except:
         #     pass
-    # При копировании из 1С столбец Согласован пропадает и столбцы дат (не вычислил почему только они) смещаются на 1 вправо!!!
+    # При копировании из 1С столбец Согласован пропадает и столбцы дат (не понял почему только они) смещаются на 1 вправо!!!
     df['Дата выписки'] = df['Дата выписки'].apply(lambda x: x.rstrip('.1'))
     df['Дата выписки'] = df['Дата выписки'].apply(lambda x: x[:6] + x[-2:])
 
+    # * Поптыка маппинга с 1С и листом Статьи
+    # df_temp = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx', sheet_name=2)
+    #
+    # df_temp.columns = ['', 'Статья в ДДС', 'Код', 'Название статьи'] + [''] * (len(df_temp.columns) - 4)
+    #
+    # df_temp = df_temp.dropna(subset=['Статья в ДДС'])
+    # df_temp.to_excel('chpokus1.xlsx')
+    # df2_ = df.copy()
+    # df2_.to_excel('chpokus2.xlsx')
+    # df2_ = df2_.merge(df_temp, left_on='Код БДДС', right_on='Код', how='left')
+    # print(df2_)
+    # df2_.to_excel('chpokus.xlsx')
+
     df['Сумма документа'] = df['Сумма документа'].apply(lambda x: re.sub(r'\s+', '', x.replace(',', '.')))
-    df1 = pd.DataFrame({'Поставщик': df['Контрагент'], 'БИН / ИИН получателя': df['БИН / ИИН'].astype(str), 'Реестр': 'Реестр 1С', 'Статья в ДДС': '', 'Валюта платежа': 'KZT',
+
+    df1_ = pd.DataFrame({'Поставщик': df['Контрагент'], 'БИН / ИИН получателя': df['БИН / ИИН'].astype(str), 'Реестр': 'Реестр 1С', 'Статья в ДДС': df['Статья затрат'], 'Валюта платежа': 'KZT',
                         'Сумма к оплате': df['Сумма документа'].astype(float), 'Сумма к оплате KZT': df['Сумма документа'].astype(float), 'Курс': 1, 'Дата оплаты': df['Дата выписки'], 'Skip': '', 'Проверка статьи': df['Код БДДС'], 'Название статьи': df['Статья затрат']})
     app.quit()
     time.sleep(1)
 
-    return df1
+    return df1_
 
 
 def design_number_fmt_and_date(df2, yest):
@@ -825,8 +845,6 @@ def make_analysis_and_calculations(yesterday):
         # print(max_rows_halyk)
         # for _ in matches:
         #     print(_)
-        print(f'{yesterday2}\nHalyk - {max_rows_halyk}, mathces - {len(matches)}, halyks - {len(bin_halyk)}')
-        tools.send_message_to_tg(tg_token, chat_id, f'{yesterday2}\nHalyk - {max_rows_halyk}, mathces - {len(matches)}')
 
         for ind in not_matching:
             if sheet[f'H{ind}'].value is not None:
@@ -932,17 +950,17 @@ if __name__ == '__main__':
     update_credentials(save_xlsx_path, owa_username, owa_password)
     update_credentials(save_xlsx_path_qlik, owa_username, owa_password)
 
-    for day in range(1, 8):
+    for day in range(1, 32):
 
         yesterday1 = datetime.date.today().strftime('%d.%m.%y')
         yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
 
         if day < 10:
-            yesterday2 = f'0{day}.11.2023'
-            yesterday1 = f'0{day}.11.23'
+            yesterday2 = f'0{day}.10.2023'
+            yesterday1 = f'0{day}.10.23'
         else:
-            yesterday2 = f'{day}.11.2023'
-            yesterday1 = f'{day}.11.23'
+            yesterday2 = f'{day}.10.2023'
+            yesterday1 = f'{day}.10.23'
 
         calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
@@ -968,7 +986,7 @@ if __name__ == '__main__':
 
             book.active = book['Halyk']
             sheet = book.active
-            book.save('loooolsl.xlsx')
+
             rows = df.to_numpy().tolist()
 
             for r_idx, row in enumerate(rows, 2):
