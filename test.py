@@ -1,18 +1,23 @@
-import pandas as pd
+import os
+import shutil
+import traceback
+from pathlib import Path
+from zipfile import ZipFile
+import os
 
-from config import save_xlsx_path
-
-df = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx', sheet_name=2)
-
-df.columns = ['', 'Статья в ДДС', 'Код', 'Название статьи'] + [''] * (len(df.columns) - 4)
-
-df = df.dropna(subset=['Статья в ДДС'])
-
-df1 = pd.read_excel('koks.xlsx')
-
-print(df1['Код БДДС'])
-
-# print(df[df['Код'] == df1['Код БДДС']]['Статья в ДДС'])
-df1 = df1.merge(df, left_on='Код БДДС', right_on='Код', how='left')
-print(df1)
-df1.to_excel('pokus.xlsx')
+try:
+    file_path = Path(r'C:\Users\Abdykarim.D\Documents\График_инвентаризаций_y2023.xlsx')
+    tmp_folder = file_path.parent.joinpath('__temp__')
+    with open(file_path, 'rb') as excel_file:
+        with ZipFile(excel_file) as excel_container:
+            excel_container.extractall(tmp_folder)
+            excel_container.close()
+    wrong_file_path = os.path.join(tmp_folder.__str__(), 'xl', 'SharedStrings.xml')
+    correct_file_path = os.path.join(tmp_folder.__str__(), 'xl', 'sharedStrings.xml')
+    os.rename(wrong_file_path, correct_file_path)
+    file_path.unlink()
+    shutil.make_archive(file_path.__str__(), 'zip', tmp_folder)
+    os.rename(file_path.__str__() + '.zip', file_path.__str__())
+    shutil.rmtree(tmp_folder.__str__(), ignore_errors=True)
+except (Exception,):
+    traceback.print_exc()

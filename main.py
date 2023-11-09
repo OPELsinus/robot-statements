@@ -273,6 +273,7 @@ def get_data_from_reestr(web):
     reestr_title = web.find_element('//*[@id="reference-view"]/table/tbody/tr[3]/td[2]').get_attr('text')
 
     if 'таткрафт' in str(reestr_title).lower():
+        print('skipped tatcraft')
         return pd.DataFrame()
 
     provider_name = []
@@ -950,17 +951,17 @@ if __name__ == '__main__':
     update_credentials(save_xlsx_path, owa_username, owa_password)
     update_credentials(save_xlsx_path_qlik, owa_username, owa_password)
 
-    for day in range(1, 32):
+    for day in range(1):
 
         yesterday1 = datetime.date.today().strftime('%d.%m.%y')
         yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
 
-        if day < 10:
-            yesterday2 = f'0{day}.10.2023'
-            yesterday1 = f'0{day}.10.23'
-        else:
-            yesterday2 = f'{day}.10.2023'
-            yesterday1 = f'{day}.10.23'
+        # if day < 10:
+        #     yesterday2 = f'0{day}.11.2023'
+        #     yesterday1 = f'0{day}.11.23'
+        # else:
+        #     yesterday2 = f'{day}.11.2023'
+        #     yesterday1 = f'{day}.11.23'
 
         calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
