@@ -25,7 +25,7 @@ class Odines(App):
         self.fuckn_tooltip = {"class_name": "V8ConfirmationWindow", "control_type": "ToolTip", "visible_only": True,
                               "enabled_only": True, "found_index": 0}
         self.root_selector = {"title_re": "1С:Предприятие - Алматы центр / ТОО \"Magnum Cash&Carry\" "
-                                          "/ Алматы  управление / .*", "class_name": "V8TopLevelFrame",
+                                          "/ .*", "class_name": "V8TopLevelFrame",
                               "control_type": "Window", "found_index": 0}
         hold_session()
         Thread(target=self.close_1c_config, daemon=True).start()
