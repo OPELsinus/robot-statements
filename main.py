@@ -1011,9 +1011,9 @@ if __name__ == '__main__':
     update_credentials(save_xlsx_path, owa_username, owa_password)
     update_credentials(save_xlsx_path_qlik, owa_username, owa_password)
 
-    for month_ in range(11, 12):
-        day__ = [1, 7] if month_ == 12 else [14, 30]
-        for day in range(1, 7):
+    for month_ in range(1):
+        day__ = [7, 14]
+        for day in range(day__[0], day__[1]):
 
             yesterday1 = datetime.date.today().strftime('%d.%m.%y')
             yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
