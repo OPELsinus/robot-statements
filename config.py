@@ -71,6 +71,7 @@ working_path.mkdir(exist_ok=True, parents=True)
 save_xlsx_path = config_data['save_xlsx_path']
 save_xlsx_path_qlik = config_data['save_xlsx_path_qlik']
 halyk_extract_path = config_data['halyk_extract_path']
+halyk_extract_path_2023 = config_data['halyk_extract_path_2023']
 chat_id = config_data['chat_id']
 
 if ctypes.windll.user32.GetKeyboardLayout(0) != 67699721:

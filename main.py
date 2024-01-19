@@ -21,7 +21,7 @@ from core import Odines
 
 import tools
 from tools import hold_session, send_message_by_smtp, send_message_to_orc, update_credentials, send_message_to_tg
-from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name, save_xlsx_path_qlik, tg_token, machine_ip, halyk_extract_path
+from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name, save_xlsx_path_qlik, tg_token, machine_ip, halyk_extract_path, halyk_extract_path_2023
 from rpamini import Web
 
 cols = ['N', 'Согласован', 'Дата выписки', 'Дата планируемой оплаты', 'Заявка на оплату',
@@ -128,6 +128,7 @@ def search_by_date(yest):
             break
         except Exception as error:
             print(f"ERROR OCCURED HERE: {error}")
+            # time.sleep(1000)
         time.sleep(0.1)
 
     print('here1')
@@ -466,71 +467,109 @@ def fact_oplat_to_reestr(filename, yesterdays_reestr_date):
 
 
 def get_first_statement(weekends):
+
     hold_session()
     # print('Started getting first statement')
-    df1 = pd.DataFrame()
+    df1_ = pd.DataFrame()
     print(weekends)
+
     for ind, day in enumerate(weekends[::-1]):
+
         month = int(day.split('.')[1])
         year = str(day.split('.')[2])
 
-        for folder in os.listdir(halyk_extract_path):
-            if str(month) in folder and MONTHS[month - 1] in folder and str(year) in folder:
-                for subfolders in os.listdir(os.path.join(halyk_extract_path, folder)):
+        # for folder in os.listdir(halyk_extract_path):
+        #     print('#1', month, folder, MONTHS[month - 1], year)
+        #     if str(month) in folder and MONTHS[month - 1] in folder and str(year) in folder:
+        #         for subfolders in os.listdir(os.path.join(halyk_extract_path, folder)):
+        #
+        #             subfolder = os.path.join(os.path.join(halyk_extract_path, folder), subfolders)
+        #             try:
+        #                 for files in os.listdir(subfolder):
+        #
+        #                     file = os.path.join(os.path.join(os.path.join(halyk_extract_path, folder), subfolders), files)
+        #
+        #                     print('#2', day, files.lower(), os.path.getsize(file) / 1024)
+        #                     if day in files and 'kzt народный' in files.lower() and os.path.getsize(file) / 1024 > 100:
+        #                         df2_ = pd.read_excel(file)
+        #                         print('#1', file)
+        #                         if len(df1_) != 0:
+        #                             df2_ = df2_.iloc[10:]
+        #                         if len(weekends) > 1:
+        #                             df2_ = df2_.iloc[:-1]
+        #                         df1_ = pd.concat([df1_, df2_])
+        #                         break
+        #             except:
+        #
+        #                 if day in subfolders and 'kzt народный' in subfolders.lower() and os.path.getsize(subfolder) / 1024 > 100:
+        #                     df2_ = pd.read_excel(subfolder)
+        #                     print('#2', subfolder)
+        #                     if len(df1_) != 0:
+        #                         df2_ = df2_.iloc[10:]
+        #                     if len(weekends) > 1:
+        #                         df2_ = df2_.iloc[:-1]
+        #                     df1_ = pd.concat([df1_, df2_])
+        #
+        # print('LENTUS', len(df1_))
 
-                    subfolder = os.path.join(os.path.join(halyk_extract_path, folder), subfolders)
-                    try:
-                        for files in os.listdir(subfolder):
+        for folder, subfolder, files in os.walk(halyk_extract_path):
+            for file in files:
+                # print(os.path.join(folder, file))
+                if day in file and 'kzt народный' in file.lower() and os.path.getsize(os.path.join(folder, file)) / 1024 > 100:
+                    df2_ = pd.read_excel(os.path.join(folder, file))
+                    print('#1', file)
+                    if len(df1_) != 0:
+                        df2_ = df2_.iloc[10:]
+                    if len(weekends) > 1:
+                        df2_ = df2_.iloc[:-1]
+                    df1_ = pd.concat([df1_, df2_])
+                    break
 
-                            file = os.path.join(os.path.join(os.path.join(halyk_extract_path, folder), subfolders), files)
+        # * --- Remove below code ---
+        if len(df1_) == 0:
 
-                            if day in files and 'kzt народный' in files.lower() and os.path.getsize(file) / 1024 > 100:
-                                df2 = pd.read_excel(file)
-                                print('#1', file)
-                                if len(df1) != 0:
-                                    df2 = df2.iloc[10:]
-                                if len(weekends) > 1:
-                                    df2 = df2.iloc[:-1]
-                                df1 = pd.concat([df1, df2])
-                                break
-                    except:
-                        if day in subfolders and 'kzt народный' in subfolders.lower() and os.path.getsize(subfolder) / 1024 > 100:
-                            df2 = pd.read_excel(subfolder)
-                            print('#2', subfolder)
-                            if len(df1) != 0:
-                                df2 = df2.iloc[10:]
-                            if len(weekends) > 1:
-                                df2 = df2.iloc[:-1]
-                            df1 = pd.concat([df1, df2])
+            for folder, subfolder, files in os.walk(halyk_extract_path_2023):
+                for file in files:
+                    # print(os.path.join(folder, file))
+                    if day in file and 'kzt народный' in file.lower() and os.path.getsize(os.path.join(folder, file)) / 1024 > 100:
+                        df2_ = pd.read_excel(os.path.join(folder, file))
+                        print('#1', file)
+                        if len(df1_) != 0:
+                            df2_ = df2_.iloc[10:]
+                        if len(weekends) > 1:
+                            df2_ = df2_.iloc[:-1]
+                        df1_ = pd.concat([df1_, df2_])
+                        break
+        # * --- ---
 
-    df1.dropna(how='all', inplace=True)
+    df1_.dropna(how='all', inplace=True)
 
     if True:
 
-        df1.columns = df1.iloc[7]
+        df1_.columns = df1_.iloc[7]
 
         if len(weekends) > 1:
-            df1 = df1[(df1['Дебет'].notna()) | (df1['Кредит'].notna())].iloc[1:]
-            # df1 = df1[(df1['Дебет'].notna())].iloc[1:]
+            df1_ = df1_[(df1_['Дебет'].notna()) | (df1_['Кредит'].notna())].iloc[1:]
+            # df1_ = df1_[(df1_['Дебет'].notna())].iloc[1:]
         else:
-            df1 = df1[(df1['Дебет'].notna()) | (df1['Кредит'].notna())].iloc[1:-1]
-            # df1 = df1[(df1['Дебет'].notna())].iloc[1:-1]
+            df1_ = df1_[(df1_['Дебет'].notna()) | (df1_['Кредит'].notna())].iloc[1:-1]
+            # df1_ = df1_[(df1_['Дебет'].notna())].iloc[1:-1]
 
         try:
-            df1['Дебет'] = df1['Дебет'].apply(lambda x: x.replace(' ', ''))
-            df1['Дебет'] = df1['Дебет'].astype(float)
-            df1['Кредит'] = df1['Кредит'].apply(lambda x: x.replace(' ', ''))
-            df1['Кредит'] = df1['Кредит'].astype(float)
+            df1_['Дебет'] = df1_['Дебет'].apply(lambda x: x.replace(' ', ''))
+            df1_['Дебет'] = df1_['Дебет'].astype(float)
+            df1_['Кредит'] = df1_['Кредит'].apply(lambda x: x.replace(' ', ''))
+            df1_['Кредит'] = df1_['Кредит'].astype(float)
         except:
             ...
 
-        df1['Дата валютирования'] = pd.to_datetime(df1['Дата валютирования'], format='%d.%m.%Y')
-        df1['Дата валютирования'] = df1['Дата валютирования'].dt.strftime('%d.%m.%y')
+        df1_['Дата валютирования'] = pd.to_datetime(df1_['Дата валютирования'], format='%d.%m.%Y')
+        df1_['Дата валютирования'] = df1_['Дата валютирования'].dt.strftime('%d.%m.%y')
 
-        # print(len(df1))
-        # df1.to_excel('rffdgdlolus.xlsx')
+        # print(len(df1_))
+        # df1_.to_excel('rffdgdlolus.xlsx')
 
-        return df1
+        return df1_
 
     # except:
     #     send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА4')
@@ -1003,107 +1042,115 @@ def make_analysis_and_calculations(yesterday):
 # ORIGIN CODE
 if __name__ == '__main__':
 
-    start_time = datetime.datetime.now().strftime('%H:%M:%S')
-    start_time_secs = time.time()
-    timings = []
-    start_time_iter = datetime.datetime.now().strftime('%H:%M:%S')
+    logger = logging.getLogger(logger_name)
 
-    update_credentials(save_xlsx_path, owa_username, owa_password)
-    update_credentials(save_xlsx_path_qlik, owa_username, owa_password)
+    try:
+        start_time = datetime.datetime.now().strftime('%H:%M:%S')
+        start_time_secs = time.time()
+        timings = []
+        start_time_iter = datetime.datetime.now().strftime('%H:%M:%S')
 
-    for month_ in range(1):
-        day__ = [7, 14]
-        for day in range(day__[0], day__[1]):
+        update_credentials(save_xlsx_path, owa_username, owa_password)
+        update_credentials(save_xlsx_path_qlik, owa_username, owa_password)
 
-            yesterday1 = datetime.date.today().strftime('%d.%m.%y')
-            yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
+        for month_ in range(1):
+            day__ = [3, 10]
+            for day in range(1):
 
-            if day < 10:
-                yesterday2 = f'0{day}.12.2023'
-                yesterday1 = f'0{day}.12.23'
-            else:
-                yesterday2 = f'{day}.12.2023'
-                yesterday1 = f'{day}.12.23'
+                yesterday1 = datetime.date.today().strftime('%d.%m.%y')
+                yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
 
-            calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
+                # if day < 10:
+                #     yesterday1 = f'0{day}.09.23'
+                #     yesterday2 = f'0{day}.09.2023'
+                # else:
+                #     yesterday1 = f'{day}.09.23'
+                #     yesterday2 = f'{day}.09.2023'
 
-            cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
-            cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
+                calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
-            if cur_day_type != 'Holiday':
-                logger = logging.getLogger(logger_name)
-                # print('Started current date: ', yesterday2)
-                weekends = []
-                weekends_type = []
+                cur_day_index = calendar[calendar['Day'] == yesterday1]['Type'].index[0]
+                cur_day_type = calendar[calendar['Day'] == yesterday1]['Type'].iloc[0]
 
-                for i in range(cur_day_index - 1, 0, -1):
-                    weekends.append(calendar['Day'].iloc[i][:6] + '20' + calendar['Day'].iloc[i][-2:])
-                    weekends_type.append(calendar['Type'].iloc[i])
-                    if calendar['Type'].iloc[i] == 'Working':
-                        yesterday1 = calendar['Day'].iloc[i]
-                        break
+                if cur_day_type != 'Holiday':
+                    # print('Started current date: ', yesterday2)
+                    weekends = []
+                    weekends_type = []
 
-                df = get_first_statement(weekends)
+                    for i in range(cur_day_index - 1, -1, -1):
+                        print(i, calendar['Day'].iloc[i][:6] + '20' + calendar['Day'].iloc[i][-2:])
+                        weekends.append(calendar['Day'].iloc[i][:6] + '20' + calendar['Day'].iloc[i][-2:])
+                        weekends_type.append(calendar['Type'].iloc[i])
+                        if calendar['Type'].iloc[i] == 'Working':
+                            yesterday1 = calendar['Day'].iloc[i]
+                            break
 
-                book = load_workbook(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx')
+                    df = get_first_statement(weekends)
 
-                book.active = book['Halyk']
-                sheet = book.active
+                    book = load_workbook(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Копия Сверка ОБРАЗЕЦ.xlsx')
 
-                rows = df.to_numpy().tolist()
+                    book.active = book['Halyk']
+                    sheet = book.active
 
-                for r_idx, row in enumerate(rows, 2):
-                    for c_idx, value in enumerate(row, 1):
-                        sheet.cell(row=r_idx, column=c_idx, value=value)
+                    rows = df.to_numpy().tolist()
 
-                book.save(f'{working_path}\\Temp1.xlsx')
+                    for r_idx, row in enumerate(rows, 2):
+                        for c_idx, value in enumerate(row, 1):
+                            sheet.cell(row=r_idx, column=c_idx, value=value)
 
-                df3 = pd.DataFrame()
+                    book.save(f'{working_path}\\Temp1.xlsx')
 
-                for ind, yesterday in enumerate(weekends):
-                    # # 1 --------------------------------------------------------------------------
-                    print('yes:', yesterday)
-                    web1 = search_by_date(yesterday)
+                    df3 = pd.DataFrame()
 
-                    # # 2 --------------------------------------------------------------------------
-                    # df2 = pd.DataFrame()
-                    # yesterdays_reestr_date = '30.10.2023'
-                    print('finished filter')
-                    df2, yesterdays_reestr_date = documentolog(web1, yesterday)
-                    print('finished sed')
-                    # # 3 --------------------------------------------------------------------------
+                    for ind, yesterday in enumerate(weekends):
+                        # # 1 --------------------------------------------------------------------------
+                        print('yes:', yesterday)
+                        web1 = search_by_date(yesterday)
 
-                    isEmpty = False
+                        # # 2 --------------------------------------------------------------------------
+                        # df2 = pd.DataFrame()
+                        # yesterdays_reestr_date = '30.10.2023'
+                        print('finished filter')
+                        df2, yesterdays_reestr_date = documentolog(web1, yesterday)
+                        print('finished sed')
+                        # # 3 --------------------------------------------------------------------------
 
-                    if weekends_type[ind] != 'Holiday' and df2 is not None and yesterdays_reestr_date is not None:
+                        isEmpty = False
 
-                        df1 = odines(yesterday)
+                        if weekends_type[ind] != 'Holiday' and df2 is not None and yesterdays_reestr_date is not None:
 
-                        df2 = pd.concat([df2, df1])
+                            df1 = odines(yesterday)
 
-                        if len(df1) == 0:
-                            isEmpty = True
-                            tools.send_message_to_tg(tg_token, chat_id, f'Реестры 1С - Пустые')
+                            df2 = pd.concat([df2, df1])
 
-                    df3 = pd.concat([df3, df2])
+                            if len(df1) == 0:
+                                isEmpty = True
+                                tools.send_message_to_tg(tg_token, chat_id, f'Реестры 1С - Пустые')
 
-                # 4 ---------------------------------------------------------------------------------------
+                        df3 = pd.concat([df3, df2])
 
-                design_number_fmt_and_date(df3, yesterday1)
+                    # 4 ---------------------------------------------------------------------------------------
 
-                # 5 ---------------------------------------------------------------------------------------
+                    design_number_fmt_and_date(df3, yesterday1)
 
-                fill_empty_bins()
+                    # 5 ---------------------------------------------------------------------------------------
 
-                # 6 ---------------------------------------------------------------------------------------
+                    fill_empty_bins()
 
-                len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
+                    # 6 ---------------------------------------------------------------------------------------
 
-                # # FINISHED LOGIC --------------------------------------------------------------------------
+                    len_reestr, len_halyk = make_analysis_and_calculations(yesterday2)
 
-                tools.send_message_to_tg(tg_token, chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
+                    # # FINISHED LOGIC --------------------------------------------------------------------------
 
-                # send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
+                    tools.send_message_to_tg(tg_token, chat_id, f'Всё сверено. Отрабатывал за сегодня({yesterday2}), день(дни) за которые брал реестры {weekends}\nЛишние строки были удалены\nОбщая длина Реестров - {len_reestr}, Halyk - {len_halyk}')
 
-            else:
-                print(1)
+                    # send_message_by_smtp(smtp_host, to=['Abdykarim.D@magnum.kz', 'Goremykin@magnum.kz', 'Ibragimova@magnum.kz'], subject=f'Сверка Выписок ROBOT - {yesterday2}', body=f'Сверка Выписок за {yesterday2} завершилась', username=smtp_author)
+
+                else:
+                    print(1)
+
+    except Exception as main_error:
+        print(f'MAIN ERROR OCCURED: {main_error}')
+        logger.info(f'MAIN ERROR OCCURED: {main_error}')
+        logger.warning(f'MAIN ERROR OCCURED: {main_error}')
