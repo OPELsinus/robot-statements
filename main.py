@@ -4,6 +4,7 @@ import os
 import re
 import time
 import shutil
+import traceback
 from contextlib import suppress
 from pathlib import Path
 
@@ -144,153 +145,161 @@ def search_by_date(yest):
 
 def documentolog(web, yesterday):
 
-    print('enter1')
-    if web.find_element('//*[@id="node_meta_total_rows"]').get_attr('text') == '0':
-        web.quit()
-        print('quitted')
-        return [None, None]
-    print('enter2')
-    time.sleep(1.5)
-    order = web.find_element('//*[contains(@id, "grid_col_f")]/span/a[2]').get_attr('class')
-
-    print('enter2.1')
-    # Сортировка реестров по убыванию даты
-    if 'desc' in order and 'current' not in order:
-        print('enter2.2')
-        web.find_element('//*[@id="grid_col_f_4121eee"]/span').click()
-
-        print('enter2.3')
+    try:
+        print('enter1')
+        if web.find_element('//*[@id="node_meta_total_rows"]').get_attr('text') == '0':
+            web.quit()
+            print('quitted')
+            return [None, None]
+        print('enter2')
         time.sleep(1.5)
-    time.sleep(0.1)
-    texts = []
-    links = []
-    times = []
-    link = []
-    rows = []
-    start = 0
-    end = 9
-    end_ = 9
-    print('enter3')
-    cells = web.find_elements('//*[contains(@id, "grid_cell")]/a')
+        order = web.find_element('//*[contains(@id, "grid_col_f")]/span/a[2]').get_attr('class')
 
-    print('enter3.00')
-    for ind, cell in enumerate(cells):
-        try:
-            if ind % end == 0:
-                links.append(cell.get_attr('href'))
-            texts.append(cell.get_attr('text'))
+        print('enter2.1')
+        # Сортировка реестров по убыванию даты
+        if 'desc' in order and 'current' not in order:
+            print('enter2.2')
+            web.find_element('//*[@id="grid_col_f_4121eee"]/span').click()
 
-        except:
-            print('eroro')
-            send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА1')
+            print('enter2.3')
+            time.sleep(1.5)
+        time.sleep(0.1)
+        texts = []
+        links = []
+        times = []
+        link = []
+        rows = []
+        start = 0
+        end = 9
+        end_ = 9
+        print('enter3')
+        cells = web.find_elements('//*[contains(@id, "grid_cell")]/a')
 
-    print('enter3.1')
-    while end <= len(texts):
-        print(f"Appending {texts[start:end]} | {start} | {end}")
-        rows.append(texts[start:end])
-        start, end = end, end + end_
+        print('enter3.00')
+        for ind, cell in enumerate(cells):
+            try:
+                if ind % end == 0:
+                    links.append(cell.get_attr('href'))
+                texts.append(cell.get_attr('text'))
 
-    today = datetime.datetime.strptime(datetime.date.today().strftime('%d.%m.%Y'), '%d.%m.%Y').date()
-    print('enter4')
-    if len(yesterday) == 0:
-        yesterd_reestr_date = ''
-    else:
-        yesterd_reestr_date = yesterday
+            except:
+                print('eroro')
+                send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА1')
 
-    df2 = pd.DataFrame()
+        print('enter3.1')
+        while end <= len(texts):
+            print(f"Appending {texts[start:end]} | {start} | {end}")
+            rows.append(texts[start:end])
+            start, end = end, end + end_
 
-    print('enter4.1')
-    print(rows)
-    # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начат отбор реестров. Всего {len(links)} реестра(-ов)')
-    for ind, row in enumerate(rows):
-        print(row)
-        row_date = datetime.datetime.strptime(row[0], '%d.%m.%Y').date()
-        print('enter4.2', row_date)
-        if row_date < today:
-            logger.info(f'Checking')
-            if len(yesterd_reestr_date) == 0:
-                yesterd_reestr_date = row[0]
+        today = datetime.datetime.strptime(datetime.date.today().strftime('%d.%m.%Y'), '%d.%m.%Y').date()
+        print('enter4')
+        if len(yesterday) == 0:
+            yesterd_reestr_date = ''
+        else:
+            yesterd_reestr_date = yesterday
 
-            if len(yesterd_reestr_date) != 0 and row[0] == yesterd_reestr_date and 'Безналичный' in row and row_date == datetime.datetime.strptime(row[0], '%d.%m.%Y').date():
-                start_time = datetime.datetime.now().strftime('%H:%M:%S')
+        df2 = pd.DataFrame()
 
-                web.get(links[ind])
-                web.load()
+        print('enter4.1')
+        print(rows)
+        # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начат отбор реестров. Всего {len(links)} реестра(-ов)')
+        for ind, row in enumerate(rows):
+            print(row)
+            row_date = datetime.datetime.strptime(row[0], '%d.%m.%Y').date()
+            print('enter4.2', row_date)
+            if row_date < today:
+                logger.info(f'Checking')
+                if len(yesterd_reestr_date) == 0:
+                    yesterd_reestr_date = row[0]
 
-                link.append(links[ind])
-                logger.info(f'Started reestr: {links[ind]}')
-                df1 = get_data_from_reestr(web)
-                # logger.info(f'Ended reestr: {links[ind]}')
-                df2 = pd.concat([df2, df1])
-                # logger.info(f'Concatenated')
-                end_time = datetime.datetime.now().strftime('%H:%M:%S')
-                times.append([start_time, end_time])
-                # print(row, links[ind])
+                if len(yesterd_reestr_date) != 0 and row[0] == yesterd_reestr_date and 'Безналичный' in row and row_date == datetime.datetime.strptime(row[0], '%d.%m.%Y').date():
+                    start_time = datetime.datetime.now().strftime('%H:%M:%S')
 
-    logger.info(f'Went forward')
-    # ----------------------------------------------------------------------------------
-    # Выполнение кода до страницы 11 ТЗ
-    # ----------------------------------------------------------------------------------
+                    web.get(links[ind])
+                    web.load()
 
-    # Кнопка "Справочники"
-    web.find_element('//*[@id="header_menu"]/li[6]/a').click()
-    time.sleep(0.7)
+                    link.append(links[ind])
+                    logger.info(f'Started reestr: {links[ind]}')
+                    df1 = get_data_from_reestr(web)
+                    # logger.info(f'Ended reestr: {links[ind]}')
+                    df2 = pd.concat([df2, df1])
+                    # logger.info(f'Concatenated')
+                    end_time = datetime.datetime.now().strftime('%H:%M:%S')
+                    times.append([start_time, end_time])
+                    # print(row, links[ind])
 
-    # Кнопка "Справочники -> Системные"
-    web.find_element('//*[@id="header_menu"]/li[6]/div/ul/li[4]/a').click()
-    time.sleep(0.7)
+        logger.info(f'Went forward')
+        # ----------------------------------------------------------------------------------
+        # Выполнение кода до страницы 11 ТЗ
+        # ----------------------------------------------------------------------------------
 
-    # Кнопка "Справочники -> Системные -> Список файлов"
-    web.find_element('//*[@id="header_menu"]/li[6]/div/ul/li[4]/div/ul/li[6]/a').click()
-    time.sleep(1)
+        # Кнопка "Справочники"
+        web.find_element('//*[@id="header_menu"]/li[6]/a').click()
+        time.sleep(0.7)
 
-    year = str(datetime.datetime.now().date()).split('-')[0]
+        # Кнопка "Справочники -> Системные"
+        web.find_element('//*[@id="header_menu"]/li[6]/div/ul/li[4]/a').click()
+        time.sleep(0.7)
 
-    df1 = pd.DataFrame()
+        # Кнопка "Справочники -> Системные -> Список файлов"
+        web.find_element('//*[@id="header_menu"]/li[6]/div/ul/li[4]/div/ul/li[6]/a').click()
+        time.sleep(1)
 
-    for index in range(100):
+        year = str(datetime.datetime.now().date()).split('-')[0]
 
-        title = web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').get_attr('text')
+        df1 = pd.DataFrame()
 
-        if 'Факт' in title and 'оплат' in title and year in title:
+        for index in range(100):
 
-            web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').click()
-            web.find_element('//*[contains(@id, "fileview")]').click()
+            title = web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').get_attr('text')
 
-            filename = None
-            found = False
+            # if 'Факт' in title and 'оплат' in title and year in title:
+            if 'Факт' in title and 'оплат' in title and '30.12.2023' in title:
 
-            for wait in range(60):
-                for file_ in os.listdir(download_path):
-                    if 'факт' in file_.lower() and 'оплат' in file_.lower() and 'crdownload' not in file_.lower():
-                        filename = file_
-                        found = True
+                web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').click()
+                web.find_element('//*[contains(@id, "fileview")]').click()
+
+                filename = None
+                found = False
+
+                for wait in range(60):
+                    for file_ in os.listdir(download_path):
+                        if 'факт' in file_.lower() and 'оплат' in file_.lower() and 'crdownload' not in file_.lower():
+                            filename = file_
+                            found = True
+                            break
+                    if found:
                         break
-                if found:
-                    break
-                else:
-                    time.sleep(1)
+                    else:
+                        time.sleep(1)
 
-            print(filename)
-            df1 = fact_oplat_to_reestr(filename, yesterd_reestr_date)
+                print(filename)
+                df1 = fact_oplat_to_reestr(filename, yesterd_reestr_date)
 
-            logger.info('Deleting')
-            Path.unlink(Path(os.path.join(download_path, filename)))
-            logger.info('Deleted')
+                logger.info('Deleting')
+                Path.unlink(Path(os.path.join(download_path, filename)))
+                logger.info('Deleted')
 
-            break
-            # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА2')
-    # except:
-    #     break
+                break
+                # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, 'Сверка выписок\nОШИБКА2')
+        # except:
+        #     break
 
-    df2 = pd.concat([df2, df1])
+        df2 = pd.concat([df2, df1])
 
-    # for times1 in times:
-    #     print(times1)
-    # print(yesterd_reestr_date)
+        # for times1 in times:
+        #     print(times1)
+        # print(yesterd_reestr_date)
 
-    web.quit()
-    return [df2, yesterd_reestr_date]
+        web.quit()
+        return [df2, yesterd_reestr_date]
+
+    except Exception as error1:
+        logger.warning(f'Error Occured on Documentolog: {error1}')
+        logger.info(f'Error Occured on Documentolog: {error1}')
+        traceback.print_exc()
+
 
 
 def get_data_from_reestr(web):
@@ -321,30 +330,65 @@ def get_data_from_reestr(web):
     logger.info('Found 6 cells')
 
     for id, cell in enumerate(cells1):
-        text = cell.get_attr('text').strip()
-        # if len(cells2[id + 1].get_attr('text').strip()) != 0:
-        #     provider_name.append(text) if len(text) != 0 else provider_name.append(' ')
-        # else:
-        provider_name.append(text) if len(text) != 0 else provider_name.append('')
-        print(text)
-    print()
+        try:
+            text = cell.get_attr('text').strip()
+            # if len(cells2[id + 1].get_attr('text').strip()) != 0:
+            #     provider_name.append(text) if len(text) != 0 else provider_name.append(' ')
+            # else:
+            provider_name.append(text) if len(text) != 0 else provider_name.append('')
+            # print(text)
+        except Exception as error1:
+            logger.warning(f'Error Occured on Reestr: {error1}')
+            logger.info(f'Error Occured on Reestr: {error1}')
+            traceback.print_exc()
+    print('~~1~~')
     for cell in cells2:
-        text = cell.get_attr('text').strip()
-        provider_bin_iin.append(text) if len(text) != 0 else provider_bin_iin.append('')
+        try:
+            text = cell.get_attr('text').strip()
+            provider_bin_iin.append(text) if len(text) != 0 else provider_bin_iin.append('')
+        except Exception as error1:
+            logger.warning(f'Error Occured on Reestr2: {error1}')
+            logger.info(f'Error Occured on Reestr2: {error1}')
+            traceback.print_exc()
     for cell in cells3:
-        text = cell.get_attr('text').strip()
-        statement_in_dds.append(text) if len(text) != 0 else statement_in_dds.append('')
+        try:
+            text = cell.get_attr('text').strip()
+            statement_in_dds.append(text) if len(text) != 0 else statement_in_dds.append('')
+
+        except Exception as error1:
+            logger.warning(f'Error Occured on Reestr3: {error1}')
+            logger.info(f'Error Occured on Reestr3: {error1}')
+            traceback.print_exc()
+
     logger.info('Appended 3 cells')
     hold_session()
     for cell in cells4:
-        text = cell.get_attr('text').strip()
-        payment_currency.append(text) if len(text) != 0 else payment_currency.append('')
+        try:
+            text = cell.get_attr('text').strip()
+            payment_currency.append(text) if len(text) != 0 else payment_currency.append('')
+
+        except Exception as error1:
+            logger.warning(f'Error Occured on Reestr4: {error1}')
+            logger.info(f'Error Occured on Reestr4: {error1}')
+            traceback.print_exc()
     for cell in cells5:
-        text = cell.get_attr('text').strip()
-        amount_to_pay.append(text) if len(text) != 0 else amount_to_pay.append('')
+        try:
+            text = cell.get_attr('text').strip()
+            amount_to_pay.append(text) if len(text) != 0 else amount_to_pay.append('')
+
+        except Exception as error1:
+            logger.warning(f'Error Occured on Reestr5: {error1}')
+            logger.info(f'Error Occured on Reestr5: {error1}')
+            traceback.print_exc()
     for cell in cells6:
-        text = cell.get_attr('text').strip()
-        payment_date.append(text) if len(text) != 0 else payment_date.append('')
+        try:
+            text = cell.get_attr('text').strip()
+            payment_date.append(text) if len(text) != 0 else payment_date.append('')
+
+        except Exception as error1:
+            logger.warning(f'Error Occured on Reestr6: {error1}')
+            logger.info(f'Error Occured on Reestr6: {error1}')
+            traceback.print_exc()
     logger.info('Appended 6 cells')
 
     if 'го' in reestr_title.lower() and 'доп' not in reestr_title.lower():
@@ -1011,8 +1055,10 @@ def make_analysis_and_calculations(yesterday):
         year = yesterday.split('.')[2]
 
         with suppress(Exception):
-            os.makedirs(os.path.join(save_xlsx_path, f'{MONTHS[month]} {year}'), exist_ok=True)
-            folder = os.path.join(save_xlsx_path, f'{MONTHS[month]} {year}')
+            f_path = os.path.join(os.path.join(save_xlsx_path, 'сверка 2023'), f'{MONTHS[month]} {year}') if int(year) == 2023 else os.path.join(save_xlsx_path, f'{MONTHS[month]} {year}')
+            print(f_path)
+            os.makedirs(f_path, exist_ok=True)
+            folder = f_path
         print(folder)
         for tries in range(5):
             try:
@@ -1055,17 +1101,17 @@ if __name__ == '__main__':
 
         for month_ in range(1):
             day__ = [3, 10]
-            for day in range(1):
+            for day in range(18, 22):
 
                 yesterday1 = datetime.date.today().strftime('%d.%m.%y')
                 yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
 
-                # if day < 10:
-                #     yesterday1 = f'0{day}.09.23'
-                #     yesterday2 = f'0{day}.09.2023'
-                # else:
-                #     yesterday1 = f'{day}.09.23'
-                #     yesterday2 = f'{day}.09.2023'
+                if day < 10:
+                    yesterday1 = f'0{day}.01.24'
+                    yesterday2 = f'0{day}.01.2024'
+                else:
+                    yesterday1 = f'{day}.01.24'
+                    yesterday2 = f'{day}.01.2024'
 
                 calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
