@@ -188,7 +188,7 @@ def documentolog(web, yesterday):
 
         print('enter3.1')
         while end <= len(texts):
-            print(f"Appending {texts[start:end]} | {start} | {end}")
+            # print(f"Appending {texts[start:end]} | {start} | {end}")
             rows.append(texts[start:end])
             start, end = end, end + end_
 
@@ -202,34 +202,35 @@ def documentolog(web, yesterday):
         df2 = pd.DataFrame()
 
         print('enter4.1')
-        print(rows)
+        # print(rows)
         # send_message_to_orc('https://rpa.magnum.kz/tg', chat_id, f'Начат отбор реестров. Всего {len(links)} реестра(-ов)')
         for ind, row in enumerate(rows):
-            print(row)
+            # print(row)
             row_date = datetime.datetime.strptime(row[0], '%d.%m.%Y').date()
-            print('enter4.2', row_date)
+            # print('enter4.2', row_date)
             if row_date < today:
                 logger.info(f'Checking')
                 if len(yesterd_reestr_date) == 0:
                     yesterd_reestr_date = row[0]
 
                 if len(yesterd_reestr_date) != 0 and row[0] == yesterd_reestr_date and 'Безналичный' in row and row_date == datetime.datetime.strptime(row[0], '%d.%m.%Y').date():
-                    start_time = datetime.datetime.now().strftime('%H:%M:%S')
+                    start_time1 = datetime.datetime.now().strftime('%H:%M:%S')
 
                     web.get(links[ind])
                     web.load()
 
                     link.append(links[ind])
-                    logger.info(f'Started reestr: {links[ind]}')
+                    # logger.info(f'Started reestr: {links[ind]}')
                     df1 = get_data_from_reestr(web)
                     # logger.info(f'Ended reestr: {links[ind]}')
                     df2 = pd.concat([df2, df1])
                     # logger.info(f'Concatenated')
                     end_time = datetime.datetime.now().strftime('%H:%M:%S')
-                    times.append([start_time, end_time])
+                    times.append([start_time1, end_time])
                     # print(row, links[ind])
 
         logger.info(f'Went forward')
+
         # ----------------------------------------------------------------------------------
         # Выполнение кода до страницы 11 ТЗ
         # ----------------------------------------------------------------------------------
@@ -274,7 +275,7 @@ def documentolog(web, yesterday):
                     else:
                         time.sleep(1)
 
-                print(filename)
+                # print(filename)
                 df1 = fact_oplat_to_reestr(filename, yesterd_reestr_date)
 
                 logger.info('Deleting')
@@ -296,10 +297,8 @@ def documentolog(web, yesterday):
         return [df2, yesterd_reestr_date]
 
     except Exception as error1:
-        logger.warning(f'Error Occured on Documentolog: {error1}')
-        logger.info(f'Error Occured on Documentolog: {error1}')
+        logger.exception(f'Error Occured on Documentolog: {error1}')
         traceback.print_exc()
-
 
 
 def get_data_from_reestr(web):
@@ -453,13 +452,13 @@ def get_data_from_reestr(web):
     #     print(ind, j)
     print(len(provider_name), len(provider_bin_iin), len(reestr_title), len(reestr_title), len(statement_in_dds), len(payment_currency), len(amount_to_pay), len(payment_date), len(statement_in_dds), len(statement_check))
     print('--------=====----==')
-    print((provider_name), (provider_bin_iin), (reestr_title), reestr_title, (statement_in_dds), (payment_currency), (amount_to_pay), (payment_date), (statement_in_dds), sep='\n')
+    # print((provider_name), (provider_bin_iin), (reestr_title), reestr_title, (statement_in_dds), (payment_currency), (amount_to_pay), (payment_date), (statement_in_dds), sep='\n')
     if len(reestr_title) != len(provider_name):
         reestr_title = [reestr_title] * len(provider_name)
     print('-==-=-=-=-=--=--=-=-=-=')
     print(len(provider_name), len(provider_bin_iin), len(reestr_title), len(reestr_title), len(statement_in_dds), len(payment_currency), len(amount_to_pay), len(payment_date), len(statement_in_dds), len(statement_check))
     print('--------=====----==')
-    print((provider_name), (provider_bin_iin), (reestr_title), reestr_title, (statement_in_dds), (payment_currency), (amount_to_pay), (payment_date), (statement_in_dds), sep='\n')
+    # print((provider_name), (provider_bin_iin), (reestr_title), reestr_title, (statement_in_dds), (payment_currency), (amount_to_pay), (payment_date), (statement_in_dds), sep='\n')
 
     df3 = pd.DataFrame({
         'Поставщик': provider_name,
@@ -475,7 +474,7 @@ def get_data_from_reestr(web):
         'Проверка статьи': statement_check,
         'Название статьи': statement_in_dds
     })
-    print(df3)
+    # print(df3)
     hold_session()
     # logger.info(f'DF Length: {len(df3)}')
     return df3

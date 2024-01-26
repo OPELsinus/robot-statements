@@ -1,4 +1,5 @@
 import json
+import os
 from contextlib import suppress
 from pathlib import Path
 from threading import Thread
@@ -17,8 +18,10 @@ from tools import hold_session
 class Odines(App):
 
     def __init__(self, timeout=60):
-
-        path = r'C:\Program Files\1cv8\8.3.13.1644\bin\1cv8.exe' if machine_ip == '172.20.1.24' else r'C:\Program Files\1cv8\common\1cestart.exe'
+        path_ = r"C:\Program Files\1cv8\common\1cestart.exe"
+        if os.path.isfile(r'C:\Program Files\1cv8\8.3.13.1644\bin\1cv8.exe'):
+            path_ = r'C:\Program Files\1cv8\8.3.13.1644\bin\1cv8.exe'
+        path = path_
 
         super(Odines, self).__init__(Path(path), timeout=timeout,
                                      process_registry=process_list_path, logger=logger_name)
