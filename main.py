@@ -22,7 +22,7 @@ from core import Odines
 
 import tools
 from tools import hold_session, send_message_by_smtp, send_message_to_orc, update_credentials, send_message_to_tg
-from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name, save_xlsx_path_qlik, tg_token, machine_ip, halyk_extract_path, halyk_extract_path_2023
+from config import smtp_host, smtp_author, chat_id, download_path, working_path, SEDLogin, SEDPass, save_xlsx_path, owa_username, owa_password, logger_name, save_xlsx_path_qlik, tg_token, machine_ip, halyk_extract_path, halyk_extract_path_2023, process_day
 from rpamini import Web
 
 cols = ['N', 'Согласован', 'Дата выписки', 'Дата планируемой оплаты', 'Заявка на оплату',
@@ -247,7 +247,7 @@ def documentolog(web, yesterday):
         web.find_element('//*[@id="header_menu"]/li[6]/div/ul/li[4]/div/ul/li[6]/a').click()
         time.sleep(1)
 
-        year = str(datetime.datetime.now().date()).split('-')[0]
+        year = str(yesterday).split('.')[2]
 
         df1 = pd.DataFrame()
 
@@ -256,7 +256,7 @@ def documentolog(web, yesterday):
             title = web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').get_attr('text')
 
             # if 'Факт' in title and 'оплат' in title and year in title:
-            if 'Факт' in title and 'оплат' in title and '30.12.2023' in title:
+            if 'Факт' in title and 'оплат' in title and year in title:
 
                 web.find_element(f'//*[@id="grid_row_{index}"]/td[2]/a').click()
                 web.find_element('//*[contains(@id, "fileview")]').click()
@@ -598,13 +598,32 @@ def get_first_statement(weekends):
             df1_ = df1_[(df1_['Дебет'].notna()) | (df1_['Кредит'].notna())].iloc[1:-1]
             # df1_ = df1_[(df1_['Дебет'].notna())].iloc[1:-1]
 
+        debit = df1_[df1_['Дебет'].notna()].copy()
+        credit = df1_[df1_['Кредит'].notna()].copy()
+
+        with suppress(Exception):
+
+            debit['Дебет'] = debit['Дебет'].apply(lambda x: x.replace(' ', ''))
+            credit['Кредит'] = credit['Кредит'].apply(lambda x: x.replace(' ', ''))
+
         try:
-            df1_['Дебет'] = df1_['Дебет'].apply(lambda x: x.replace(' ', ''))
-            df1_['Дебет'] = df1_['Дебет'].astype(float)
-            df1_['Кредит'] = df1_['Кредит'].apply(lambda x: x.replace(' ', ''))
-            df1_['Кредит'] = df1_['Кредит'].astype(float)
-        except:
-            ...
+            debit['Дебет'] = debit['Дебет'].astype(float)
+            credit['Кредит'] = credit['Кредит'].astype(float)
+
+            # df1_['Дебет'] = df1_['Дебет'].astype(float)
+            # df1_['Кредит'] = df1_['Кредит'].astype(float)
+        except Exception as er:
+            print(er)
+
+        # print('-------')
+        # print(debit)
+        # print('-===-')
+        # print(credit)
+        # print('--===--')
+        # print(pd.concat([debit, credit]))
+        print()
+
+        df1_ = pd.concat([debit, credit])
 
         df1_['Дата валютирования'] = pd.to_datetime(df1_['Дата валютирования'], format='%d.%m.%Y')
         df1_['Дата валютирования'] = df1_['Дата валютирования'].dt.strftime('%d.%m.%y')
@@ -1100,17 +1119,24 @@ if __name__ == '__main__':
 
         for month_ in range(1):
             day__ = [3, 10]
-            for day in range(18, 22):
+            for day in range(1):
 
                 yesterday1 = datetime.date.today().strftime('%d.%m.%y')
                 yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
 
-                if day < 10:
-                    yesterday1 = f'0{day}.01.24'
-                    yesterday2 = f'0{day}.01.2024'
-                else:
-                    yesterday1 = f'{day}.01.24'
-                    yesterday2 = f'{day}.01.2024'
+                if process_day != '':
+                    yesterday1 = f"{process_day.split('.')[0]}.{process_day.split('.')[1]}.{process_day.split('.')[2][2:]}"
+                    yesterday2 = process_day
+
+                # Если вдруг надо будет запускать на большой период дат
+                # if day < 10:
+                #     yesterday1 = f'0{day}.02.24'
+                #     yesterday2 = f'0{day}.02.2024'
+                # else:
+                #     yesterday1 = f'{day}.02.24'
+                #     yesterday2 = f'{day}.02.2024'
+
+                logger.info(f'STARTED DAY: {yesterday1}, {yesterday2}')
 
                 calendar = pd.read_excel(f'{save_xlsx_path}\\Шаблоны для робота (не удалять)\\Производственный календарь {yesterday2[-4:]}.xlsx')
 
