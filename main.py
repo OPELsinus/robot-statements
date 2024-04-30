@@ -1125,8 +1125,8 @@ if __name__ == '__main__':
                 yesterday2 = datetime.date.today().strftime('%d.%m.%Y')
 
                 if process_day != '':
-                    yesterday1 = f"{process_day.split('.')[0]}.{process_day.split('.')[1]}.{process_day.split('.')[2][2:]}"
-                    yesterday2 = process_day
+                    yesterday1 = process_day
+                    yesterday2 = f"{process_day.split('.')[0]}.{process_day.split('.')[1]}.{process_day.split('.')[2][2:]}"
 
                 # Если вдруг надо будет запускать на большой период дат
                 # if day < 10:
